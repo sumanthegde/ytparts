@@ -10,7 +10,7 @@ function timeupdateHandler(){
     const cur = video.currentTime; //
     // On just exceeding an interval, skip to the next interval
     if(lastStart <= close && close+1 < cur){
-      let repeat = document.getElementById('loopCheckbox').checked;
+      let repeat = document.getElementById('loopCheckbox7354').checked;
       imin = repeat ? (i+1)%n : i+1;
       video.currentTime = imin == n ? video.duration : intervals[imin][0];
       //console.log(lastStart + " " + close + " " + cur + "   " + intervals[imin]);
@@ -59,9 +59,9 @@ function parseTime(timeString) {
 function submitIntervals() {
   const video = document.querySelector('video');
   const maxt = Math.trunc(video.duration)-1;
-  const intervalsStr = document.getElementById('intervalInput').value;
+  const intervalsStr = document.getElementById('intervalInput7354').value;
   console.log("-->"+intervalsStr);
-  const pattern = /^\s*[0-9:\s]+-[0-9:\s]+(,\s*[0-9:\s]+-[0-9:\s]+)*\s*$/
+  const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/
   if (intervalsStr.trim()==='')
     intervals = [];
   else if (intervalsStr.length>200)
@@ -93,13 +93,25 @@ function createIntervalInput() {
 
   if (belowDiv) {
     const inputElement = document.createElement('input');
-    inputElement.id = 'intervalInput';
+    inputElement.id = 'intervalInput7354';
     const placeholder = 'e.g. 0:59-1:03, 1:59:00-2:00:30';
     inputElement.placeholder = placeholder;
 
     const submitButton = document.createElement('button');
-    submitButton.innerText = 'Submit';
+    submitButton.innerText = 'Apply';
     submitButton.addEventListener('click', submitIntervals);
+
+    inputElement.addEventListener('keydown', function(event) {
+      if (event.key === 'Enter') 
+        submitIntervals();
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.innerText = 'Clear';
+    deleteButton.addEventListener('click', function () {
+      inputElement.value = '';
+      submitIntervals();
+    });
 
     inputElement.addEventListener('keydown', function(event) {
       if (event.key === 'Enter') 
@@ -108,13 +120,14 @@ function createIntervalInput() {
 
     const loopCheckbox = document.createElement('input');
     loopCheckbox.type = 'checkbox';
-    loopCheckbox.id = 'loopCheckbox';
+    loopCheckbox.id = 'loopCheckbox7354';
     const loopLabel = document.createElement('label');
-    loopLabel.setAttribute('for', 'loopCheckbox');
+    loopLabel.setAttribute('for', 'loopCheckbox7354');
     loopLabel.innerText = ' Loop';
 
     belowDiv.parentNode.insertBefore(inputElement, belowDiv);
     belowDiv.parentNode.insertBefore(submitButton, belowDiv);
+    belowDiv.parentNode.insertBefore(deleteButton, belowDiv);
     belowDiv.parentNode.insertBefore(loopLabel, belowDiv);
     belowDiv.parentNode.insertBefore(loopCheckbox, belowDiv);
    
