@@ -1,19 +1,23 @@
 {
   "manifest_version": 3,
   "name": "YouTube Parts Looper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Play one or more intervals (ranges) of a YouTube video on a loop.",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "bookmarks"],
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",
     "96": "images/icon96.png",
     "128": "images/icon128.png"
   },
+  "background": {
+      "service_worker": "background.js",
+      "type": "module"
+  },
   "content_scripts": [
     {
       "matches": ["*://www.youtube.com/*"],
-      "js": ["content.js"],
+      "js": ["utils.js","popup.js","content.js"],
       "run_at" : "document_start"
     }
   ]
