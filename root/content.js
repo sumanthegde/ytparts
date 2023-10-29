@@ -59,7 +59,7 @@ function submitIntervals() {
   }
   const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/
   if (!pattern.test(intervalsStr)){
-    alert("Input format should be 'startTime-endTime, startTime-endTime, ...'");
+    alert('Input format should be startTime-endTime,startTime-endTime,... etc. Example: "00:30 - 00:45, 1:55 - 2:05" (without quotes)');
     return;
   }
   const intervalsRaw = intervalsStr.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)));
@@ -228,7 +228,7 @@ function formatTime(seconds) {
 function disableButton(button){
   button.disabled=true;
   button.style.backgroundColor = 'LightGrey';
-  button.style.cursor = 'not-allowed'
+  button.style.cursor = 'default'
 }
 function enableButton(button){
   button.disabled=false;
@@ -264,10 +264,10 @@ function createIntervalInput() {
     const shineDiv = document.createElement("div");
     shineDiv.style.display = 'inline-block';
     shineDiv.style.width = '200px';
+    shineDiv.style.verticalAlign= 'middle';
     const shiner = document.createElement('div');
     shiner.id = shinerId;
     shiner.innerText = '';
-    shiner.style.display = 'inline'; 
     shiner.style.fontSize = '1.2em';
     shiner.style.opacity = '0';
     shiner.style.marginRight = '10px';
@@ -285,7 +285,7 @@ function createIntervalInput() {
     markButton.innerText = '☆';
     markButton.style.border = 'none';
     markButton.style.background = 'none'; 
-    markButton.title = 'Bookmark the interval list so that it applies automatically to this video';
+    markButton.title = 'Save the applied interval list, so that it loads automatically next time';
     markButton.style.marginRight = '10px';
 
     const historyButton = document.createElement('button');
@@ -335,7 +335,7 @@ function configureButton(text, elementId, childId, tooltipMessage, disableOnClic
   const tooltip = document.createElement('div');
   tooltip.textContent = tooltipMessage;
   tooltip.style.position = 'absolute';
-  tooltip.style.top = '110%'; 
+  tooltip.style.top = '-110%';
   tooltip.style.left = '60%';
   tooltip.style.transform = 'translateX(-50%)'; 
   tooltip.style.backgroundColor = 'blue';
@@ -392,7 +392,7 @@ function addStaticListeners(){
       });
     }
   });
-  configureButton('All B\'s', historyId, historyId, null, true, function () {
+  configureButton('All B.s', historyId, historyId, null, true, function () {
     createPopup(pageUrl,enableButton);
   });
 }
