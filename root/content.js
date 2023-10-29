@@ -17,16 +17,21 @@ const historyId = 'historyButton7354';
 function timeupdateHandler(){
   if(adState) return;
   const video = document.querySelector('video');
+  let repeat = document.getElementById(loopId).checked;
   let n = intervals.length;
+  if(n==0 && repeat==true && video.currentTime > video.duration-0.1){
+    video.currentTime=0;
+    return;
+  }
   for (let i=imin; i<n; i++){
     const [open,close] = intervals[i];
     const cur = video.currentTime; //
-    // On just exceeding an interval, skip to the next interval
     if(lastStart <= close && close+1 < cur){
-      let repeat = document.getElementById(loopId).checked;
       imin = repeat ? (i+1)%n : i+1;
-      video.currentTime = imin == n ? video.duration : intervals[imin][0];
-      break;
+      if(cur < close+2){ // interval overshoot
+        video.currentTime = imin == n ? video.duration : intervals[imin][0];
+        break;
+      }
     }
   }
 }
