@@ -43,7 +43,7 @@ function seekedHandler(){
 }
 
 function submitIntervalsOnEnter(event){
-  if (event.key === 'Enter' && event.target.value !== '')
+  if (event.key === 'Enter')
     submitIntervals();
 }
 
@@ -93,10 +93,12 @@ function invokeIntervals(intervalsRaw){
     const intervalsCapped = intervalsRaw.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
     intervals = mergeAndSortIntervals(intervalsCapped);
     imin = 0;
-    const t1 = intervals.length > 0 ? intervals[0][0] : 0;
-    video.currentTime = t1;
+    if(intervals.length>0){
+      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
+      video.currentTime = t1;
+      console.log("invoked. t was " + t + ", now " + t1);
+    }
     showAndFadeShiner();
-    console.log("invoked. t was " + t + ", now " + t1);
   }else
     setTimeout(invokeIntervals,100,intervalsRaw);
 }
@@ -107,13 +109,13 @@ function showAndFadeShiner() {
   var markButton = document.getElementById(bookmarkId);
   shiner.style.opacity = '1';
   shiner.style.transition = 'opacity 2s';
-  shiner.innerText = 'Applied: ';
+  shiner.innerText = 'Applied:';
   if(intervals.length > 0){
-    shiner.innerText += msfy(intervals).replaceAll(',', ', ');
+    shiner.innerText += ' ' + msfy(intervals).replaceAll(',', ', ');
     enableButton(deleteButton);
     enableButton(markButton);
   }else{
-    shiner.innerText += 'None';
+    shiner.innerText += ' ' + 'None';
     disableButton(deleteButton);
     disableButton(markButton);
   }
@@ -134,15 +136,17 @@ function adStateTrack() {
             const inputElement = document.getElementById(inputElementId);
             const submitButton = document.getElementById(submitButtonId);
             const deleteButton = document.getElementById(deleteButtonId);
-            adState ? disableButton(submitButton) : enableButton(submitButton);
             if(adState){
               submitButton.removeEventListener('click', submitIntervals);
               inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+              disableButton(submitButton);
               disableButton(deleteButton);
             }else{
               submitButton.addEventListener('click', submitIntervals);
               inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-              enableButton(deleteButton);
+              enableButton(submitButton);
+              if(intervals.length>0) 
+                enableButton(deleteButton);
             }
             console.log("ad: ", adState);
           }
@@ -277,7 +281,7 @@ function createIntervalInput() {
     const deleteButton = document.createElement('button');
     deleteButton.id = deleteButtonId;
     deleteButton.style.marginRight = '10px';
-    deleteButton.title = 'Discard the applied interval and start over';
+    deleteButton.title = 'Discard the applied interval';
 
     const markButton = document.createElement('button');
     markButton.id = bookmarkId;

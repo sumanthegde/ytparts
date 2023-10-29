@@ -82,6 +82,7 @@ function createList(mainVideoId, container, bookObjects) {
     const paragraph = document.createElement("p");
     const link = document.createElement("a");
     link.textContent = 'https://youtu.be/'+bookObjects[0].videoId;
+    link.style.fontSize= '0.8em';
     link.href = bookObjects[0].url;
     link.style.marginRight = '10px';
     paragraph.appendChild(link);
