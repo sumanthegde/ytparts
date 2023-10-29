@@ -285,7 +285,7 @@ function createIntervalInput() {
     markButton.innerText = '☆';
     markButton.style.border = 'none';
     markButton.style.background = 'none'; 
-    markButton.title = 'Save the applied interval list, so that it loads automatically next time';
+    markButton.title = 'Save the interval list (that you\'ve just Applied), so that it loads automatically next time.';
     markButton.style.marginRight = '10px';
 
     const historyButton = document.createElement('button');
