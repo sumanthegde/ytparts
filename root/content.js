@@ -75,6 +75,9 @@ function adStateTrack(){
     return;
   } 
   const video = document.querySelector('video');
+  if(video.readyState === 4)
+    videoLoadTime = Date.now();
+  console.log("ready? ", video.readyState, videoLoadTime);
   video.addEventListener('loadeddata', function (){
     videoLoadTime = Date.now();
     console.log("Loaded: ", video.duration, video.baseURI.slice(0,44));
@@ -156,7 +159,7 @@ function submitIntervals() {
 function invokeIntervals(k){
   const video = document.querySelector('video');
   const t = video.currentTime;
-  if((Date.now()-videoLoadTime>100) && !adState){
+  if(!adState && video.readyState === 4 && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
       const t1 = intervals.length > 0 ? intervals[0][0] : 0;
@@ -165,8 +168,10 @@ function invokeIntervals(k){
     }
     showAndFadeShiner();
   }else if(k>0){
-    if(Number.isInteger(k))
+    if(Number.isInteger(k)){
       console.log("trial ", k);
+      k-=0.1;
+    }
     setTimeout(invokeIntervals, 100, k-(adState ? 0 : 0.1));
   }
 }
@@ -451,7 +456,7 @@ function waitForLoading() {
   const video = document.querySelector('video');
   const belowDiv = document.getElementById('below');
   if(video && belowDiv){
-    console.log("VERSION: " + chrome.runtime.getManifest().version);
+    console.log("Version " + chrome.runtime.getManifest().version);
     createIntervalInput();
   }else{
     const POLL_MS = 300;
