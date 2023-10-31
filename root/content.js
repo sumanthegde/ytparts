@@ -1,12 +1,13 @@
 var pageUrl = undefined;
-var intervals = []; 
+var intervals = undefined;
 var lastStart = undefined;
 var imin = undefined;
-var adState = undefined;
+var adState = false;
 var oldAdState = undefined;
+var videoLoadTime = undefined;
 const subTDivId = 'subTDiv7354';
 const tCopyId = 'tCopy7354';
-const inputElementId = 'intervalInput7354';
+const inputElementId = 'inputElement7354';
 const submitButtonId = 'submitButton7354';
 const deleteButtonId = 'deleteButton7354';
 const loopId = 'loopCheckbox7354';
@@ -19,10 +20,6 @@ function timeupdateHandler(){
   const video = document.querySelector('video');
   let repeat = document.getElementById(loopId).checked;
   let n = intervals.length;
-  if(n==0 && repeat==true && video.currentTime > video.duration-0.1){
-    video.currentTime=0;
-    return;
-  }
   for (let i=imin; i<n; i++){
     const [open,close] = intervals[i];
     const cur = video.currentTime; //
@@ -30,9 +27,14 @@ function timeupdateHandler(){
       imin = repeat ? (i+1)%n : i+1;
       if(cur < close+2){ // interval overshoot
         video.currentTime = imin == n ? video.duration : intervals[imin][0];
-        break;
+        return;
       }
     }
+  }
+  const PREEMPT_S = 0.3; // if < 0.1, video won't replay on firefox
+  if(repeat==true && video.currentTime > video.duration - PREEMPT_S){
+    video.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
+    return;
   }
 }
 
@@ -43,69 +45,130 @@ function seekedHandler(){
     return;
   }
   let t = video.currentTime;
-  lastStart = t-0.25; // without -0.25, the condition (lastStart <= close) may fail, when open==close.
+  const ELAPSED_S = 0.25; // Guessed lower bound on the time elapsed since the seek event
+  lastStart = t-ELAPSED_S; // without this, the condition (lastStart <= close) may fail, when open==close.
   imin = 0;
 }
 
+var parAd = false;
+var parAd0 = undefined;
+function parallelAdTrack(){
+  const player = document.getElementById('movie_player');
+  if(player){
+    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
+    if(admod)
+      parAd = !!admod.childElementCount;
+  }
+  if(parAd === parAd0){
+  }else{
+    parAd0=parAd;
+    const video = document.querySelector('video');
+    console.log("parAd:",parAd, " video: ", video.currentTime);
+  }
+  setTimeout(parallelAdTrack,100);
+}
+
+function adStateTrack(){
+  const player = document.getElementById('movie_player');
+  if(!player){
+    setTimeout(adStateTrack,1000);
+    return;
+  } 
+  const video = document.querySelector('video');
+  video.addEventListener('loadeddata', function (){
+    videoLoadTime = Date.now();
+    console.log("Loaded: ", video.duration, video.baseURI.slice(0,44));
+  });
+  console.log("player: ", !!player);
+  //const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
+  //console.log("admod: ", !!admod);
+
+  function handleResultChange(mutationsList, observer) {
+    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
+    adState = admod && (admod.childElementCount > 0); //player.getElementsByClassName('video-ads ytp-ad-module')[0].childElementCount || false;
+    if (adState !== oldAdState){
+      oldAdState = adState;
+      const inputElement = document.getElementById(inputElementId);
+      const submitButton = document.getElementById(submitButtonId);
+      const deleteButton = document.getElementById(deleteButtonId);
+      if(adState){
+        videoLoadTime = 2e12;
+        submitButton.removeEventListener('click', submitIntervals);
+        inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+        disableButton(submitButton);
+        disableButton(deleteButton);
+      }else{
+        submitButton.addEventListener('click', submitIntervals);
+        inputElement.addEventListener('keydown', submitIntervalsOnEnter);
+        enableButton(submitButton);
+        if(intervals.length>0) 
+          enableButton(deleteButton);
+      }
+      const video = document.querySelector('video');
+      console.log("Ad: ", adState);
+    }
+  }
+  const observer = new MutationObserver(handleResultChange);
+  const config = {attributes: true, childList: true};
+  observer.observe(player, config);
+}
+
+
 function submitIntervalsOnEnter(event){
-  if (event.key === 'Enter')
+  if (event.key === 'Enter' && event.target.value.trim() !== '')
     submitIntervals();
 }
 
 function submitIntervals() {
+  const example = ' Example: "00:30 - 00:45, 1:55 - 2:05" (without quotes)';
+  const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/;
+  const patternFail = 'Input format should be startTime-endTime,startTime-endTime,... etc.' + example;
+  const timestampFail = 'Ensure startTime ≤ endTime, and that timestamps are in h:m:s or m:s or s format.' + example;
   const intervalsStr = document.getElementById(inputElementId).value;
   if (intervalsStr.trim()===''){
-    invokeIntervals([]);
+    intervals=[];
+    invokePending = true;
+    //invokeIntervals(60);
     return;
   }
   if (intervalsStr.length>200){
     alert("Input too long.");
     return;
   }
-  const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/
   if (!pattern.test(intervalsStr)){
-    alert('Input format should be startTime-endTime,startTime-endTime,... etc. Example: "00:30 - 00:45, 1:55 - 2:05" (without quotes)');
+    alert(patternFail);
     return;
   }
   const intervalsRaw = intervalsStr.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)));
   if(intervalsRaw.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || interval[0] > interval[1])){
-    alert("Ensure startTime ≤ endTime, and that timestamps are in h:m:s or m:s or s format.");
+    alert(timestampFail);
     return;
   }
   const video = document.querySelector('video');
-  video.removeEventListener("seeked", seekedHandler);
-  video.removeEventListener("timeupdate", timeupdateHandler);
-  video.addEventListener("seeked", seekedHandler);
-  video.addEventListener("timeupdate", timeupdateHandler);
-  invokeIntervals(intervalsRaw);
+  const videoLen = video.duration;
+  const maxt = Math.trunc(videoLen)-1;
+  const intervalsCapped = intervalsRaw.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
+  intervals = mergeAndSortIntervals(intervalsCapped);
+  invokePending = true;
+  invokeIntervals(5);
 }
 
-function submitIntervals2(){
-  const video = document.querySelector('video');
-  video.removeEventListener("seeked", seekedHandler);
-  video.removeEventListener("timeupdate", timeupdateHandler);
-  video.addEventListener("seeked", seekedHandler);
-  video.addEventListener("timeupdate", timeupdateHandler);
- 
-  invokeIntervals();
-}
-
-function invokeIntervals(intervalsRaw){
+function invokeIntervals(k){
   const video = document.querySelector('video');
   const t = video.currentTime;
-  if(t>0.1 && !adState){
-    const maxt = Math.trunc(video.duration)-1;
-    const intervalsCapped = intervalsRaw.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
-    intervals = mergeAndSortIntervals(intervalsCapped);
+  if((Date.now()-videoLoadTime>100) && !adState){
     imin = 0;
     if(intervals.length>0){
       const t1 = intervals.length > 0 ? intervals[0][0] : 0;
       video.currentTime = t1;
-      console.log("invoked. t was " + t + ", now " + t1);
+      console.log('invoked. t was ' + t + ', now ' + t1 + ' dur: ' + video.duration);
     }
     showAndFadeShiner();
-  }else
-    setTimeout(invokeIntervals,100,intervalsRaw);
+  }else if(k>0){
+    if(Number.isInteger(k))
+      console.log("trial ", k);
+    setTimeout(invokeIntervals, 100, k-(adState ? 0 : 0.1));
+  }
 }
 
 function showAndFadeShiner() {
@@ -124,51 +187,17 @@ function showAndFadeShiner() {
     disableButton(deleteButton);
     disableButton(markButton);
   }
+  const FADE_MS = 2000;
   setTimeout(function () {
     shiner.style.opacity = '0.5';
-  }, 2000);
-}
-
-function adStateTrack() {
-  var mutationCallback = function(mutationsList) {
-    for (var mutation of mutationsList) {
-      if (mutation.type === 'childList' || mutation.type === 'attributes') {
-        var moviePlayer = document.getElementById("movie_player");
-        if (moviePlayer) {
-          adState = moviePlayer.classList.contains("ad-showing");
-          if (adState !== oldAdState) {
-            oldAdState = adState;
-            const inputElement = document.getElementById(inputElementId);
-            const submitButton = document.getElementById(submitButtonId);
-            const deleteButton = document.getElementById(deleteButtonId);
-            if(adState){
-              submitButton.removeEventListener('click', submitIntervals);
-              inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
-              disableButton(submitButton);
-              disableButton(deleteButton);
-            }else{
-              submitButton.addEventListener('click', submitIntervals);
-              inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-              enableButton(submitButton);
-              if(intervals.length>0) 
-                enableButton(deleteButton);
-            }
-            console.log("ad: ", adState);
-          }
-        }
-      }
-    }
-  };
-  var observer = new MutationObserver(mutationCallback);
-  var moviePlayer = document.getElementById("movie_player");
-  if (moviePlayer) 
-    observer.observe(moviePlayer, { attributes: true, attributeFilter: ['class'] });
+  }, FADE_MS);
 }
 
 function handleNewUrl() {
   intervals = []; 
   lastStart = -1;
   imin = 0;
+  videoLoadTime = 2e12;
   const placeholder = 'e.g. 0:30-0:45, 1:15-1:30';
   const inputElement = document.getElementById(inputElementId);
   const submitButton = document.getElementById(submitButtonId);
@@ -176,8 +205,12 @@ function handleNewUrl() {
   const markButton = document.getElementById(bookmarkId);
   const shiner = document.getElementById(shinerId);
  
-  function handleInput() {
+  function handleInput(event) {
     disableButton(markButton);
+    if(event.target.value.trim()===''){
+      disableButton(submitButton);
+    }else
+      enableButton(submitButton);
   }
 
   function handleDelete(){
@@ -216,11 +249,12 @@ function handleNewUrl() {
 }
 
 function hrefTrack(){
+  const POLL_MS = 300;
   var newhref = window.location.href;
   if(pageUrl === newhref)
-    setTimeout(hrefTrack,300);
+    setTimeout(hrefTrack, POLL_MS);
   else{
-    console.log("href: ", newhref);
+    console.log("href: ", newhref.slice(0,44));
     pageUrl = newhref;
     handleNewUrl();
   }
@@ -255,9 +289,8 @@ function createIntervalInput() {
     tCopy.id = tCopyId;
     tCopy.title = 'Copy this timestamp';
     const subTDiv = document.createElement("div");
-    subTDiv.innerText = 'A';
-    subTDiv.style.zIndex = '9999';
     subTDiv.id = subTDivId;
+    subTDiv.style.fontFamily = "Courier New, monospace";
     tCopy.appendChild(subTDiv);
     tDiv.appendChild(tCopy);
 
@@ -267,8 +300,8 @@ function createIntervalInput() {
     const submitButton = document.createElement('button');
     submitButton.id= submitButtonId;
     submitButton.style.border = 'none';
-    submitButton.innerText = 'Apply';
-    enableButton(submitButton);
+    //submitButton.innerText = 'Apply';
+    //enableButton(submitButton);
 
     const shineDiv = document.createElement("div");
     shineDiv.style.display = 'inline-block';
@@ -291,17 +324,17 @@ function createIntervalInput() {
     const markButton = document.createElement('button');
     markButton.id = bookmarkId;
     disableButton(markButton);
-    markButton.innerText = '☆';
-    markButton.style.border = 'none';
-    markButton.style.background = 'none'; 
+    //markButton.innerText = '☆';
+    //markButton.style.border = 'none';
+    //markButton.style.background = 'none'; 
     markButton.title = 'Save the interval list (that you\'ve just Applied), so that it loads automatically next time.';
     markButton.style.marginRight = '10px';
 
     const historyButton = document.createElement('button');
-    historyButton.innerText = '★';
     historyButton.id = historyId;
-    historyButton.style.border = "none";
-    historyButton.style.background = "none";
+    //historyButton.innerText = '★';
+    //historyButton.style.border = "none";
+    //historyButton.style.background = "none";
     historyButton.title = 'See previously bookmarked intervals';
     historyButton.style.marginRight = '20px';
 
@@ -325,6 +358,7 @@ function createIntervalInput() {
 
     addStaticListeners();
     adStateTrack();
+    //parallelAdTrack();
     hrefTrack();
   }
 }
@@ -349,9 +383,10 @@ function configureButton(text, elementId, childId, tooltipMessage, disableOnClic
   tooltip.style.transform = 'translateX(-50%)'; 
   tooltip.style.backgroundColor = 'blue';
   tooltip.style.fontSize = '0.9em';
+  const TOOLTIP_MS = 1000;
   function showTooltip() {
     button.appendChild(tooltip);
-    setTimeout(removeTooltip,1000);
+    setTimeout(removeTooltip, TOOLTIP_MS);
   }
   function removeTooltip() {
     tooltip.remove();
@@ -372,6 +407,8 @@ function configureButton(text, elementId, childId, tooltipMessage, disableOnClic
 
 function addStaticListeners(){
   const video = document.querySelector('video');
+  video.addEventListener("seeked", seekedHandler);
+  video.addEventListener("timeupdate", timeupdateHandler);
   const tCopy = document.getElementById(tCopyId);
   const subTDiv = document.getElementById(subTDivId);
   video.addEventListener("timeupdate", function () {
@@ -381,9 +418,7 @@ function addStaticListeners(){
   configureButton('0:00', tCopyId, subTDivId, 'Copied', false, function () {
     const textToCopy = formatTime(video.currentTime);
     navigator.clipboard.writeText(textToCopy)
-        .then(() => {
-            //console.log("Current time copied to clipboard: " + textToCopy);
-        })
+        .then(() => {})
         .catch(err => {
             console.error("Unable to copy text: ", err);
         });
@@ -392,13 +427,19 @@ function addStaticListeners(){
   configureButton('Un-apply', deleteButtonId, deleteButtonId, 'Un_applied', false, null);
   configureButton('Bookmark!', bookmarkId, bookmarkId, null, false, function (){
     const markName = prompt("To bookmark this interval list, Enter a name.");
-    if(markName) if (markName.length > 0) {
-      chrome.runtime.sendMessage({
-        type: 'save',
-        url: pageUrl,
-        name: markName,
-        intls: intervals
-      });
+    if(markName){
+      if(markName.length === 0)
+        alert("ERROR: Name cannot be empty");
+      else if (markName.indexOf('#') > -1)
+        alert("ERROR: Name cannot contain special characters like '#'");
+      else{
+        chrome.runtime.sendMessage({
+          type: 'save',
+          url: pageUrl,
+          name: markName,
+          intls: intervals
+        });
+      }
     }
   });
   configureButton('All B.s', historyId, historyId, null, true, function () {
@@ -410,12 +451,78 @@ function waitForLoading() {
   const video = document.querySelector('video');
   const belowDiv = document.getElementById('below');
   if(video && belowDiv){
-    console.log("creating input element..");
+    console.log("VERSION: " + chrome.runtime.getManifest().version);
     createIntervalInput();
   }else{
-    setTimeout(waitForLoading,300);
+    const POLL_MS = 300;
+    setTimeout(waitForLoading, POLL_MS);
   }
 }
 
 waitForLoading();
+
+function old_adStateTrack() {
+  var mutationCallback = function(mutationsList) {
+    for (var mutation of mutationsList) {
+      if (mutation.type === 'childList' || mutation.type === 'attributes') {
+        var moviePlayer = document.getElementById("movie_player");
+        if (moviePlayer) {
+          adState = moviePlayer.classList.contains("ad-showing");
+          if (adState !== oldAdState) {
+            oldAdState = adState;
+            const inputElement = document.getElementById(inputElementId);
+            const submitButton = document.getElementById(submitButtonId);
+            const deleteButton = document.getElementById(deleteButtonId);
+            if(adState){
+              submitButton.removeEventListener('click', submitIntervals);
+              inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+              disableButton(submitButton);
+              disableButton(deleteButton);
+            }else{
+              submitButton.addEventListener('click', submitIntervals);
+              inputElement.addEventListener('keydown', submitIntervalsOnEnter);
+              enableButton(submitButton);
+              if(intervals.length>0) 
+                enableButton(deleteButton);
+            }
+            const video = document.querySelector('video');
+            console.log("ad: ", adState, " video: ", video.currentTime);
+          }
+        }
+      }
+    }
+  };
+  var observer = new MutationObserver(mutationCallback);
+  var moviePlayer = document.getElementById("movie_player");
+  if (moviePlayer) 
+    observer.observe(moviePlayer, { attributes: true, attributeFilter: ['class'] });
+}
+function invokeIntervalsDiverged(){
+  console.log("invokeIntervals.",trial);
+  const POLL_S = 0.1;
+  const POLL_MS = POLL_S*1000;
+  const video = document.querySelector('video');
+  const videoUrl = video.baseURI;
+  const videoLen = video.duration;
+  const t = video.currentTime;
+  if(urlToVideoId(videoUrl) === urlToVideoId(pageUrl)){
+    imin = 0;
+    if(intervals.length>0){
+      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
+      if(videoUrl===video.baseURI){
+        video.currentTime = t1;
+        done=true;
+        console.log('invoked. t was ' + t + ', now ' + t1 + ' vid: ' + videoUrl);
+      }else
+        console.log('Error: Video URL changed');
+    }else
+      done=true;
+  }
+  if(done)
+    showAndFadeShiner();
+  else if(trial>0)
+    setTimeout(invokeIntervals, trial-POLL_S);
+  else
+    console.log("Aborting normalize. ", myST);
+}
 
