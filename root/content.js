@@ -1,10 +1,13 @@
-var pageUrl = undefined;
-var intervals = undefined;
+var pageUrl = 'https://youtube.com';
+var intervals = [];
 var lastStart = undefined;
 var imin = undefined;
 var adState = false;
 var oldAdState = undefined;
 var videoLoadTime = undefined;
+var firstLoad = true;
+var initDone = false;
+const TESTING = false;
 const subTDivId = 'subTDiv7354';
 const tCopyId = 'tCopy7354';
 const inputElementId = 'inputElement7354';
@@ -41,7 +44,6 @@ function timeupdateHandler(){
 function seekedHandler(){
   const video = document.querySelector('video');
   if(adState){
-    console.log("seeked but ad is showing. t=", video.currentTime);
     return;
   }
   let t = video.currentTime;
@@ -50,90 +52,120 @@ function seekedHandler(){
   imin = 0;
 }
 
-var parAd = false;
-var parAd0 = undefined;
-function parallelAdTrack(){
-  const player = document.getElementById('movie_player');
-  if(player){
-    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
-    if(admod)
-      parAd = !!admod.childElementCount;
-  }
-  if(parAd === parAd0){
+function loadTrack(){
+  const video = document.querySelector('video');
+  video.addEventListener('loadeddata', function (){
+    videoLoadTime = Date.now();
+    console.log("Loaded: ", video.duration, urlToVideoId(pageUrl));
+    if(firstLoad)
+      createIntervalInput();
+    else
+      handleNewUrl();
+  });
+  adStateTrack();
+}
+
+function adBasedButtonUpdate(){
+  const inputElement = document.getElementById(inputElementId);
+  const submitButton = document.getElementById(submitButtonId);
+  const deleteButton = document.getElementById(deleteButtonId);
+  if(adState){
+    submitButton.removeEventListener('click', submitIntervalsOnClick);
+    inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+    disableButton(submitButton);
+    disableButton(deleteButton);
   }else{
-    parAd0=parAd;
-    const video = document.querySelector('video');
-    console.log("parAd:",parAd, " video: ", video.currentTime);
+    submitButton.addEventListener('click', submitIntervalsOnClick);
+    inputElement.addEventListener('keydown', submitIntervalsOnEnter);
+    enableButton(submitButton);
+    if(intervals.length>0)
+      enableButton(deleteButton);
   }
-  setTimeout(parallelAdTrack,100);
 }
 
 function adStateTrack(){
+  console.log('ad track on.');
   const player = document.getElementById('movie_player');
-  if(!player){
-    setTimeout(adStateTrack,1000);
-    return;
-  } 
   const video = document.querySelector('video');
-  if(video.readyState === 4)
-    videoLoadTime = Date.now();
-  console.log("ready? ", video.readyState, videoLoadTime);
-  video.addEventListener('loadeddata', function (){
-    videoLoadTime = Date.now();
-    console.log("Loaded: ", video.duration, video.baseURI.slice(0,44));
-  });
-  console.log("player: ", !!player);
-  //const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
-  //console.log("admod: ", !!admod);
-
-  function handleResultChange(mutationsList, observer) {
-    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
-    adState = admod && (admod.childElementCount > 0); //player.getElementsByClassName('video-ads ytp-ad-module')[0].childElementCount || false;
-    if (adState !== oldAdState){
+  function mutationCallback(mutationsList){
+    adState = player.classList.contains("ad-showing");
+    if (adState !== oldAdState) {
       oldAdState = adState;
-      const inputElement = document.getElementById(inputElementId);
-      const submitButton = document.getElementById(submitButtonId);
-      const deleteButton = document.getElementById(deleteButtonId);
-      if(adState){
-        videoLoadTime = 2e12;
-        submitButton.removeEventListener('click', submitIntervals);
-        inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
-        disableButton(submitButton);
-        disableButton(deleteButton);
-      }else{
-        submitButton.addEventListener('click', submitIntervals);
-        inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-        enableButton(submitButton);
-        if(intervals.length>0) 
-          enableButton(deleteButton);
-      }
+      if(initDone)
+        adBasedButtonUpdate;
       const video = document.querySelector('video');
-      console.log("Ad: ", adState);
+      console.log("ad: ", adState, " dur: ", video.duration);
     }
-  }
-  const observer = new MutationObserver(handleResultChange);
-  const config = {attributes: true, childList: true};
-  observer.observe(player, config);
+  };
+  var observer = new MutationObserver(mutationCallback);
+  observer.observe(player, { attributes: true, attributeFilter: ['class'] });
+
+//  if(video.readyState === 4){
+//    videoLoadTime = Date.now();
+//    videoLoadCount=1;
+//    console.log("ready: ", video.readyState, video.duration);
+//    handleNewUrl();
+//  }
+//  video.addEventListener('loadeddata', function (){
+//    videoLoadTime = Date.now();
+//    if(!adState)
+//      videoLoadCount=1;
+//    console.log("Loaded: ", video.duration, urlToVideoId(video.baseURI));
+//    handleNewUrl();
+//  });
+//  function handleResultChange(mutationsList, observer) {
+//    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
+//    adState = admod && (admod.childElementCount > 0); //player.getElementsByClassName('video-ads ytp-ad-module')[0].childElementCount || false;
+//    if (adState !== oldAdState){
+//      oldAdState = adState;
+//      const inputElement = document.getElementById(inputElementId);
+//      const submitButton = document.getElementById(submitButtonId);
+//      const deleteButton = document.getElementById(deleteButtonId);
+//      if(adState){
+//        videoLoadTime = 2e12;
+//        videoLoadCount=0;
+//        submitButton.removeEventListener('click', submitIntervalsOnClick);
+//        inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+//        disableButton(submitButton);
+//        disableButton(deleteButton);
+//      }else{
+//        submitButton.addEventListener('click', submitIntervalsOnClick);
+//        inputElement.addEventListener('keydown', submitIntervalsOnEnter);
+//        enableButton(submitButton);
+//        if(intervals.length>0) 
+//          enableButton(deleteButton);
+//      }
+//      const video = document.querySelector('video');
+//      console.log("Ad: ", adState);
+//    }
+//  }
+//  const observer = new MutationObserver(handleResultChange);
+//  const config = {attributes: true, childList: true};
+//  observer.observe(player, config);
+
 }
 
 
 function submitIntervalsOnEnter(event){
   if (event.key === 'Enter' && event.target.value.trim() !== '')
-    submitIntervals();
+    submitIntervals(false);
 }
 
-function submitIntervals() {
+function submitIntervalsOnClick(){
+  submitIntervals(false);
+}
+
+function submitIntervals(comesFromBookmarks) {
+  const intervalsStr = document.getElementById(inputElementId).value;
+  if (intervalsStr.trim()===''){
+    intervals=[];
+    showAndFadeShiner();
+    return;
+  }
   const example = ' Example: "00:30 - 00:45, 1:55 - 2:05" (without quotes)';
   const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/;
   const patternFail = 'Input format should be startTime-endTime,startTime-endTime,... etc.' + example;
   const timestampFail = 'Ensure startTime ≤ endTime, and that timestamps are in h:m:s or m:s or s format.' + example;
-  const intervalsStr = document.getElementById(inputElementId).value;
-  if (intervalsStr.trim()===''){
-    intervals=[];
-    invokePending = true;
-    //invokeIntervals(60);
-    return;
-  }
   if (intervalsStr.length>200){
     alert("Input too long.");
     return;
@@ -142,38 +174,41 @@ function submitIntervals() {
     alert(patternFail);
     return;
   }
-  const intervalsRaw = intervalsStr.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)));
-  if(intervalsRaw.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || interval[0] > interval[1])){
+  const intervalsCsv = intervalsStr.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)));
+  if(intervalsCsv.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || interval[0] > interval[1])){
     alert(timestampFail);
     return;
   }
-  const video = document.querySelector('video');
-  const videoLen = video.duration;
-  const maxt = Math.trunc(videoLen)-1;
-  const intervalsCapped = intervalsRaw.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
-  intervals = mergeAndSortIntervals(intervalsCapped);
-  invokePending = true;
-  invokeIntervals(5);
+  function cap(){
+    if(comesFromBookmarks)
+      return intervalsCsv;
+    const video = document.querySelector('video');
+    const videoLen = video.duration;
+    const maxt = Math.trunc(videoLen)-1;
+    return intervalsCsv.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
+  }
+  intervals = mergeAndSortIntervals(cap(intervalsCsv));
+  console.log(intervals);
+  invokeIntervals(20);
 }
 
 function invokeIntervals(k){
   const video = document.querySelector('video');
   const t = video.currentTime;
-  if(!adState && video.readyState === 4 && (Date.now()-videoLoadTime>100)){
+  //if(!adState && videoLoadCount === 1 && video.readyState===4 && (Date.now()-videoLoadTime>100)){
+  if(!adState && video.readyState===4 && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
       const t1 = intervals.length > 0 ? intervals[0][0] : 0;
       video.currentTime = t1;
-      console.log('invoked. t was ' + t + ', now ' + t1 + ' dur: ' + video.duration);
+      console.log('invoked. t:' + t + ', T:' + t1, video.duration);
     }
     showAndFadeShiner();
   }else if(k>0){
-    if(Number.isInteger(k)){
-      console.log("trial ", k);
-      k-=0.1;
-    }
-    setTimeout(invokeIntervals, 100, k-(adState ? 0 : 0.1));
-  }
+    setTimeout(invokeIntervals, 100, k-!adState);
+    if(!adState) console.log('('+k+')');
+  }else
+    console.log('gave up.');
 }
 
 function showAndFadeShiner() {
@@ -199,10 +234,15 @@ function showAndFadeShiner() {
 }
 
 function handleNewUrl() {
+  const video = document.querySelector('video');
+  if(video.baseURI === pageUrl)
+    return;
+  pageUrl = undefined; // video.baseURI may be null yet
+
   intervals = []; 
   lastStart = -1;
   imin = 0;
-  videoLoadTime = 2e12;
+
   const placeholder = 'e.g. 0:30-0:45, 1:15-1:30';
   const inputElement = document.getElementById(inputElementId);
   const submitButton = document.getElementById(submitButtonId);
@@ -220,7 +260,7 @@ function handleNewUrl() {
 
   function handleDelete(){
     inputElement.value = '';
-    submitIntervals();
+    submitIntervals(false);
   }
 
   shiner.innerText = 'Applied: ' + 'None'; 
@@ -237,6 +277,8 @@ function handleNewUrl() {
   submitButton.addEventListener('click', submitIntervals); 
   deleteButton.addEventListener('click', handleDelete);
 
+  pageUrl = video.baseURI;
+  console.log("https://youtu.be/" + urlToVideoId(pageUrl));
   const curVideoId = urlToVideoId(pageUrl);
   chrome.runtime.sendMessage({ type: 'getall' }, function (response) {
     const filteredBookObjects = response.filter(bookObject => {
@@ -245,25 +287,41 @@ function handleNewUrl() {
     filteredBookObjects.sort((a, b) => b.timestamp - a.timestamp);
     if (filteredBookObjects.length > 0) {
       latestMss = filteredBookObjects[0].mss;
-      console.log("bookmark found " + curVideoId + ": " + latestMss);
+      console.log("# " + curVideoId + " " + latestMss);
       inputElement.value = latestMss;
-      submitIntervals();
+      submitIntervals(true);
+    }else if(TESTING){
+      latestMss = '0:20-0:30,0:50-0:59,30:0-32:0';
+      console.log("TESTING:" + curVideoId + " " + latestMss);
+      inputElement.value = latestMss;
+      submitIntervals(true);
     }
   });
-  hrefTrack();
 }
 
-function hrefTrack(){
-  const POLL_MS = 300;
-  var newhref = window.location.href;
-  if(pageUrl === newhref)
-    setTimeout(hrefTrack, POLL_MS);
-  else{
-    console.log("href: ", newhref.slice(0,44));
-    pageUrl = newhref;
-    handleNewUrl();
-  }
-}
+//function hrefTrack(){
+//  const POLL_MS = 300;
+//  var newhref = window.location.href;
+//  if(pageUrl === newhref)
+//    setTimeout(hrefTrack, POLL_MS);
+//  else{
+//    console.log("url: youtu.be/", urlToVideoId(pageUrl));
+//    pageUrl = newhref;
+//    handleNewUrl();
+//  }
+//}
+//function urlTrack(){
+//  const video = document.querySelector('video');
+//  function handleUrlChange(mutationsList, observer){
+//    if(video.baseURI !== pageUrl){
+//      pageUrl = video.baseURI;
+//      console.log("url: youtu.be/", urlToVideoId(pageUrl));
+//    }
+//  }
+//  const observer = new MutationObserver(handleUrlChange);
+//  const config = {attributes: true};
+//  observer.observe(video, config);
+//}
 
 function formatTime(seconds) {
     function pad(number) {
@@ -284,9 +342,8 @@ function enableButton(button){
   button.style.cursor = 'pointer'
 }
 function createIntervalInput() {
-  const video = document.querySelector('video');
+  firstLoad = false;
   const belowDiv = document.getElementById('below');
-
   if (belowDiv) {
     const tDiv = document.createElement("div");
     tDiv.style.display = 'inline';
@@ -362,9 +419,16 @@ function createIntervalInput() {
     belowDiv.parentNode.insertBefore(loopCheckbox, belowDiv);
 
     addStaticListeners();
-    adStateTrack();
+    adBasedButtonUpdate();
+    initDone=true;
+    console.log("Version " + chrome.runtime.getManifest().version);
+
+    handleNewUrl();
     //parallelAdTrack();
-    hrefTrack();
+    //hrefTrack();
+  }else{
+    //console.error("'below' div not created yet. Should've waited.");
+    setTimeout(createIntervalInput,300);
   }
 }
 
@@ -452,82 +516,125 @@ function addStaticListeners(){
   });
 }
 
-function waitForLoading() {
+
+function awaitVideo() {
   const video = document.querySelector('video');
-  const belowDiv = document.getElementById('below');
-  if(video && belowDiv){
-    console.log("Version " + chrome.runtime.getManifest().version);
-    createIntervalInput();
-  }else{
-    const POLL_MS = 300;
-    setTimeout(waitForLoading, POLL_MS);
-  }
-}
-
-waitForLoading();
-
-function old_adStateTrack() {
-  var mutationCallback = function(mutationsList) {
-    for (var mutation of mutationsList) {
-      if (mutation.type === 'childList' || mutation.type === 'attributes') {
-        var moviePlayer = document.getElementById("movie_player");
-        if (moviePlayer) {
-          adState = moviePlayer.classList.contains("ad-showing");
-          if (adState !== oldAdState) {
-            oldAdState = adState;
-            const inputElement = document.getElementById(inputElementId);
-            const submitButton = document.getElementById(submitButtonId);
-            const deleteButton = document.getElementById(deleteButtonId);
-            if(adState){
-              submitButton.removeEventListener('click', submitIntervals);
-              inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
-              disableButton(submitButton);
-              disableButton(deleteButton);
-            }else{
-              submitButton.addEventListener('click', submitIntervals);
-              inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-              enableButton(submitButton);
-              if(intervals.length>0) 
-                enableButton(deleteButton);
+  if(video)
+    loadTrack();
+  else{
+    function handleMutations(mutationsList, observer) {
+      mutationsList.forEach((mutation) => {
+        if (mutation.addedNodes.length > 0) {
+          for (let i = 0; i < mutation.addedNodes.length; i++) {
+            if (mutation.addedNodes[i].tagName === 'VIDEO') {
+              loadTrack();
+              observer.disconnect();
+              break;
             }
-            const video = document.querySelector('video');
-            console.log("ad: ", adState, " video: ", video.currentTime);
           }
         }
-      }
+      });
     }
-  };
-  var observer = new MutationObserver(mutationCallback);
-  var moviePlayer = document.getElementById("movie_player");
-  if (moviePlayer) 
-    observer.observe(moviePlayer, { attributes: true, attributeFilter: ['class'] });
-}
-function invokeIntervalsDiverged(){
-  console.log("invokeIntervals.",trial);
-  const POLL_S = 0.1;
-  const POLL_MS = POLL_S*1000;
-  const video = document.querySelector('video');
-  const videoUrl = video.baseURI;
-  const videoLen = video.duration;
-  const t = video.currentTime;
-  if(urlToVideoId(videoUrl) === urlToVideoId(pageUrl)){
-    imin = 0;
-    if(intervals.length>0){
-      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
-      if(videoUrl===video.baseURI){
-        video.currentTime = t1;
-        done=true;
-        console.log('invoked. t was ' + t + ', now ' + t1 + ' vid: ' + videoUrl);
-      }else
-        console.log('Error: Video URL changed');
-    }else
-      done=true;
+    const observer = new MutationObserver(handleMutations);
+    observer.observe(document.body, { childList: true, subtree: true });
   }
-  if(done)
-    showAndFadeShiner();
-  else if(trial>0)
-    setTimeout(invokeIntervals, trial-POLL_S);
-  else
-    console.log("Aborting normalize. ", myST);
 }
 
+document.addEventListener('DOMContentLoaded', awaitVideo);
+
+//function waitForLoading() {
+//  const video = document.querySelector('video');
+//  const belowDiv = document.getElementById('below');
+//  if(video && belowDiv){
+//    console.log("Version " + chrome.runtime.getManifest().version);
+//    createIntervalInput();
+//  }else{
+//    const POLL_MS = 300;
+//    setTimeout(waitForLoading, POLL_MS);
+//  }
+//}
+
+//function old_adStateTrack() {
+//  var mutationCallback = function(mutationsList) {
+//    for (var mutation of mutationsList) {
+//      if (mutation.type === 'childList' || mutation.type === 'attributes') {
+//        var moviePlayer = document.getElementById("movie_player");
+//        if (moviePlayer) {
+//          adState = moviePlayer.classList.contains("ad-showing");
+//          if (adState !== oldAdState) {
+//            oldAdState = adState;
+//            const inputElement = document.getElementById(inputElementId);
+//            const submitButton = document.getElementById(submitButtonId);
+//            const deleteButton = document.getElementById(deleteButtonId);
+//            if(adState){
+//              submitButton.removeEventListener('click', submitIntervals);
+//              inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
+//              disableButton(submitButton);
+//              disableButton(deleteButton);
+//            }else{
+//              submitButton.addEventListener('click', submitIntervals);
+//              inputElement.addEventListener('keydown', submitIntervalsOnEnter);
+//              enableButton(submitButton);
+//              if(intervals.length>0) 
+//                enableButton(deleteButton);
+//            }
+//            const video = document.querySelector('video');
+//            console.log("ad: ", adState, " video: ", video.currentTime);
+//          }
+//        }
+//      }
+//    }
+//  };
+//  var observer = new MutationObserver(mutationCallback);
+//  var moviePlayer = document.getElementById("movie_player");
+//  if (moviePlayer) 
+//    observer.observe(moviePlayer, { attributes: true, attributeFilter: ['class'] });
+//}
+//
+//function invokeIntervalsDiverged(){
+//  console.log("invokeIntervals.",trial);
+//  const POLL_S = 0.1;
+//  const POLL_MS = POLL_S*1000;
+//  const video = document.querySelector('video');
+//  const videoUrl = video.baseURI;
+//  const videoLen = video.duration;
+//  const t = video.currentTime;
+//  if(urlToVideoId(videoUrl) === urlToVideoId(pageUrl)){
+//    imin = 0;
+//    if(intervals.length>0){
+//      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
+//      if(videoUrl===video.baseURI){
+//        video.currentTime = t1;
+//        done=true;
+//        console.log('invoked. t was ' + t + ', now ' + t1 + ' vid: ' + videoUrl);
+//      }else
+//        console.log('Error: Video URL changed');
+//    }else
+//      done=true;
+//  }
+//  if(done)
+//    showAndFadeShiner();
+//  else if(trial>0)
+//    setTimeout(invokeIntervals, trial-POLL_S);
+//  else
+//    console.log("Aborting normalize. ", myST);
+//}
+//
+//var parAd = false;
+//var parAd0 = undefined;
+//function parallelAdTrack(){
+//  const player = document.getElementById('movie_player');
+//  if(player){
+//    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
+//    if(admod)
+//      parAd = !!admod.childElementCount;
+//  }
+//  if(parAd === parAd0){
+//  }else{
+//    parAd0=parAd;
+//    const video = document.querySelector('video');
+//    console.log("parAd:",parAd, " video: ", video.currentTime);
+//  }
+//  setTimeout(parallelAdTrack,100);
+//}
+//
