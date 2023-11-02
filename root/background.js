@@ -104,7 +104,6 @@ function getAllBookmarks(sendResponse) {
     chrome.bookmarks.getSubTree(folderId, function(results) {
       const bookmarks = results[0].children.filter(node => node.url);
       const expanded = bookmarks.map(expand);
-      console.log(expanded);
       sendResponse(expanded);
     });
   } else {

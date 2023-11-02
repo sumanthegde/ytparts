@@ -25,10 +25,10 @@ function timeupdateHandler(){
   let n = intervals.length;
   for (let i=imin; i<n; i++){
     const [open,close] = intervals[i];
-    const cur = video.currentTime; //
+    const cur = video.currentTime;
     if(lastStart <= close && close+1 < cur){
       imin = repeat ? (i+1)%n : i+1;
-      if(cur < close+2){ // interval overshoot
+      if(cur < close+2){
         video.currentTime = imin == n ? video.duration : intervals[imin][0];
         return;
       }
@@ -56,7 +56,7 @@ function loadTrack(){
   const video = document.querySelector('video');
   video.addEventListener('loadeddata', function (){
     videoLoadTime = Date.now();
-    console.log("Loaded: ", video.duration, urlToVideoId(pageUrl));
+    console.log("Loaded.", video.duration, urlToVideoId(pageUrl));
     if(firstLoad)
       createIntervalInput();
     else
@@ -84,7 +84,7 @@ function adBasedButtonUpdate(){
 }
 
 function adStateTrack(){
-  console.log('ad track on.');
+  console.log('ad: false (default)');
   const player = document.getElementById('movie_player');
   const video = document.querySelector('video');
   function mutationCallback(mutationsList){
@@ -99,50 +99,6 @@ function adStateTrack(){
   };
   var observer = new MutationObserver(mutationCallback);
   observer.observe(player, { attributes: true, attributeFilter: ['class'] });
-
-//  if(video.readyState === 4){
-//    videoLoadTime = Date.now();
-//    videoLoadCount=1;
-//    console.log("ready: ", video.readyState, video.duration);
-//    handleNewUrl();
-//  }
-//  video.addEventListener('loadeddata', function (){
-//    videoLoadTime = Date.now();
-//    if(!adState)
-//      videoLoadCount=1;
-//    console.log("Loaded: ", video.duration, urlToVideoId(video.baseURI));
-//    handleNewUrl();
-//  });
-//  function handleResultChange(mutationsList, observer) {
-//    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
-//    adState = admod && (admod.childElementCount > 0); //player.getElementsByClassName('video-ads ytp-ad-module')[0].childElementCount || false;
-//    if (adState !== oldAdState){
-//      oldAdState = adState;
-//      const inputElement = document.getElementById(inputElementId);
-//      const submitButton = document.getElementById(submitButtonId);
-//      const deleteButton = document.getElementById(deleteButtonId);
-//      if(adState){
-//        videoLoadTime = 2e12;
-//        videoLoadCount=0;
-//        submitButton.removeEventListener('click', submitIntervalsOnClick);
-//        inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
-//        disableButton(submitButton);
-//        disableButton(deleteButton);
-//      }else{
-//        submitButton.addEventListener('click', submitIntervalsOnClick);
-//        inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-//        enableButton(submitButton);
-//        if(intervals.length>0) 
-//          enableButton(deleteButton);
-//      }
-//      const video = document.querySelector('video');
-//      console.log("Ad: ", adState);
-//    }
-//  }
-//  const observer = new MutationObserver(handleResultChange);
-//  const config = {attributes: true, childList: true};
-//  observer.observe(player, config);
-
 }
 
 
@@ -195,13 +151,12 @@ function submitIntervals(comesFromBookmarks) {
 function invokeIntervals(k){
   const video = document.querySelector('video');
   const t = video.currentTime;
-  //if(!adState && videoLoadCount === 1 && video.readyState===4 && (Date.now()-videoLoadTime>100)){
   if(!adState && video.readyState===4 && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
       const t1 = intervals.length > 0 ? intervals[0][0] : 0;
       video.currentTime = t1;
-      console.log('invoked. t:' + t + ', T:' + t1, video.duration);
+      console.log('invoked.', t,  t1, video.duration);
     }
     showAndFadeShiner();
   }else if(k>0){
@@ -287,41 +242,17 @@ function handleNewUrl() {
     filteredBookObjects.sort((a, b) => b.timestamp - a.timestamp);
     if (filteredBookObjects.length > 0) {
       latestMss = filteredBookObjects[0].mss;
-      console.log("# " + curVideoId + " " + latestMss);
+      console.log(curVideoId + " # " + latestMss);
       inputElement.value = latestMss;
       submitIntervals(true);
     }else if(TESTING){
       latestMss = '0:20-0:30,0:50-0:59,30:0-32:0';
-      console.log("TESTING:" + curVideoId + " " + latestMss);
+      console.log("TESTING. " + curVideoId + " # " + latestMss);
       inputElement.value = latestMss;
       submitIntervals(true);
     }
   });
 }
-
-//function hrefTrack(){
-//  const POLL_MS = 300;
-//  var newhref = window.location.href;
-//  if(pageUrl === newhref)
-//    setTimeout(hrefTrack, POLL_MS);
-//  else{
-//    console.log("url: youtu.be/", urlToVideoId(pageUrl));
-//    pageUrl = newhref;
-//    handleNewUrl();
-//  }
-//}
-//function urlTrack(){
-//  const video = document.querySelector('video');
-//  function handleUrlChange(mutationsList, observer){
-//    if(video.baseURI !== pageUrl){
-//      pageUrl = video.baseURI;
-//      console.log("url: youtu.be/", urlToVideoId(pageUrl));
-//    }
-//  }
-//  const observer = new MutationObserver(handleUrlChange);
-//  const config = {attributes: true};
-//  observer.observe(video, config);
-//}
 
 function formatTime(seconds) {
     function pad(number) {
@@ -362,8 +293,6 @@ function createIntervalInput() {
     const submitButton = document.createElement('button');
     submitButton.id= submitButtonId;
     submitButton.style.border = 'none';
-    //submitButton.innerText = 'Apply';
-    //enableButton(submitButton);
 
     const shineDiv = document.createElement("div");
     shineDiv.style.display = 'inline-block';
@@ -386,17 +315,11 @@ function createIntervalInput() {
     const markButton = document.createElement('button');
     markButton.id = bookmarkId;
     disableButton(markButton);
-    //markButton.innerText = '☆';
-    //markButton.style.border = 'none';
-    //markButton.style.background = 'none'; 
     markButton.title = 'Save the interval list (that you\'ve just Applied), so that it loads automatically next time.';
     markButton.style.marginRight = '10px';
 
     const historyButton = document.createElement('button');
     historyButton.id = historyId;
-    //historyButton.innerText = '★';
-    //historyButton.style.border = "none";
-    //historyButton.style.background = "none";
     historyButton.title = 'See previously bookmarked intervals';
     historyButton.style.marginRight = '20px';
 
@@ -421,13 +344,10 @@ function createIntervalInput() {
     addStaticListeners();
     adBasedButtonUpdate();
     initDone=true;
-    console.log("Version " + chrome.runtime.getManifest().version);
+    console.log('init done.');
 
     handleNewUrl();
-    //parallelAdTrack();
-    //hrefTrack();
   }else{
-    //console.error("'below' div not created yet. Should've waited.");
     setTimeout(createIntervalInput,300);
   }
 }
@@ -540,101 +460,5 @@ function awaitVideo() {
   }
 }
 
+console.log("Version " + chrome.runtime.getManifest().version);
 document.addEventListener('DOMContentLoaded', awaitVideo);
-
-//function waitForLoading() {
-//  const video = document.querySelector('video');
-//  const belowDiv = document.getElementById('below');
-//  if(video && belowDiv){
-//    console.log("Version " + chrome.runtime.getManifest().version);
-//    createIntervalInput();
-//  }else{
-//    const POLL_MS = 300;
-//    setTimeout(waitForLoading, POLL_MS);
-//  }
-//}
-
-//function old_adStateTrack() {
-//  var mutationCallback = function(mutationsList) {
-//    for (var mutation of mutationsList) {
-//      if (mutation.type === 'childList' || mutation.type === 'attributes') {
-//        var moviePlayer = document.getElementById("movie_player");
-//        if (moviePlayer) {
-//          adState = moviePlayer.classList.contains("ad-showing");
-//          if (adState !== oldAdState) {
-//            oldAdState = adState;
-//            const inputElement = document.getElementById(inputElementId);
-//            const submitButton = document.getElementById(submitButtonId);
-//            const deleteButton = document.getElementById(deleteButtonId);
-//            if(adState){
-//              submitButton.removeEventListener('click', submitIntervals);
-//              inputElement.removeEventListener('keydown', submitIntervalsOnEnter);
-//              disableButton(submitButton);
-//              disableButton(deleteButton);
-//            }else{
-//              submitButton.addEventListener('click', submitIntervals);
-//              inputElement.addEventListener('keydown', submitIntervalsOnEnter);
-//              enableButton(submitButton);
-//              if(intervals.length>0) 
-//                enableButton(deleteButton);
-//            }
-//            const video = document.querySelector('video');
-//            console.log("ad: ", adState, " video: ", video.currentTime);
-//          }
-//        }
-//      }
-//    }
-//  };
-//  var observer = new MutationObserver(mutationCallback);
-//  var moviePlayer = document.getElementById("movie_player");
-//  if (moviePlayer) 
-//    observer.observe(moviePlayer, { attributes: true, attributeFilter: ['class'] });
-//}
-//
-//function invokeIntervalsDiverged(){
-//  console.log("invokeIntervals.",trial);
-//  const POLL_S = 0.1;
-//  const POLL_MS = POLL_S*1000;
-//  const video = document.querySelector('video');
-//  const videoUrl = video.baseURI;
-//  const videoLen = video.duration;
-//  const t = video.currentTime;
-//  if(urlToVideoId(videoUrl) === urlToVideoId(pageUrl)){
-//    imin = 0;
-//    if(intervals.length>0){
-//      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
-//      if(videoUrl===video.baseURI){
-//        video.currentTime = t1;
-//        done=true;
-//        console.log('invoked. t was ' + t + ', now ' + t1 + ' vid: ' + videoUrl);
-//      }else
-//        console.log('Error: Video URL changed');
-//    }else
-//      done=true;
-//  }
-//  if(done)
-//    showAndFadeShiner();
-//  else if(trial>0)
-//    setTimeout(invokeIntervals, trial-POLL_S);
-//  else
-//    console.log("Aborting normalize. ", myST);
-//}
-//
-//var parAd = false;
-//var parAd0 = undefined;
-//function parallelAdTrack(){
-//  const player = document.getElementById('movie_player');
-//  if(player){
-//    const admod = player.getElementsByClassName('video-ads ytp-ad-module')[0];
-//    if(admod)
-//      parAd = !!admod.childElementCount;
-//  }
-//  if(parAd === parAd0){
-//  }else{
-//    parAd0=parAd;
-//    const video = document.querySelector('video');
-//    console.log("parAd:",parAd, " video: ", video.currentTime);
-//  }
-//  setTimeout(parallelAdTrack,100);
-//}
-//
