@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "YouTube Parts Looper & Bookmarker",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Play, loop & bookmark multiple portions of a YouTube video.",
-  "permissions": ["activeTab", "bookmarks"],
+  "permissions": [
+    "activeTab",
+    "bookmarks"
+  ],
   "icons": {
     "16": "images/icon16.png",
     "48": "images/icon48.png",
@@ -11,15 +14,20 @@
     "128": "images/icon128.png"
   },
   "background": {
-      "service_worker": "background.js",
-      "type": "module"
+    "type": "module",
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://www.youtube.com/*"],
-      "js": ["utils.js","popup.js","content.js"],
-      "run_at" : "document_start"
+      "matches": [
+        "*://www.youtube.com/*"
+      ],
+      "js": [
+        "utils.js",
+        "popup.js",
+        "content.js"
+      ],
+      "run_at": "document_start"
     }
   ]
 }
-

@@ -104,14 +104,18 @@ function adStateTrack(){
 
 function submitIntervalsOnEnter(event){
   if (event.key === 'Enter' && event.target.value.trim() !== '')
-    submitIntervals(false);
+    submitIntervals();
 }
 
 function submitIntervalsOnClick(){
-  submitIntervals(false);
+  submitIntervals();
 }
 
-function submitIntervals(comesFromBookmarks) {
+function strToIntervals(str){
+  return str.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)))
+}
+
+function submitIntervals() {
   const intervalsStr = document.getElementById(inputElementId).value;
   if (intervalsStr.trim()===''){
     intervals=[];
@@ -130,20 +134,16 @@ function submitIntervals(comesFromBookmarks) {
     alert(patternFail);
     return;
   }
-  const intervalsCsv = intervalsStr.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)));
+  const intervalsCsv = strToIntervals(intervalsStr);
   if(intervalsCsv.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || interval[0] > interval[1])){
     alert(timestampFail);
     return;
   }
-  function cap(){
-    if(comesFromBookmarks)
-      return intervalsCsv;
-    const video = document.querySelector('video');
-    const videoLen = video.duration;
-    const maxt = Math.trunc(videoLen)-1;
-    return intervalsCsv.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
-  }
-  intervals = mergeAndSortIntervals(cap(intervalsCsv));
+  const video = document.querySelector('video');
+  const videoLen = video.duration;
+  const maxt = Math.trunc(videoLen)-1;
+  const capped = intervalsCsv.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
+  intervals = mergeAndSortIntervals(capped);
   console.log(intervals);
   invokeIntervals(20);
 }
@@ -215,7 +215,7 @@ function handleNewUrl() {
 
   function handleDelete(){
     inputElement.value = '';
-    submitIntervals(false);
+    submitIntervals();
   }
 
   shiner.innerText = 'Applied: ' + 'None'; 
@@ -240,16 +240,16 @@ function handleNewUrl() {
       return bookObject.videoId === curVideoId;
     });
     filteredBookObjects.sort((a, b) => b.timestamp - a.timestamp);
+    if(TESTING){
+      latestMss = '0:20-0:30,0:50-0:59,30:0-32:0';
+      console.log("TESTING.");
+    }
     if (filteredBookObjects.length > 0) {
       latestMss = filteredBookObjects[0].mss;
       console.log(curVideoId + " # " + latestMss);
-      inputElement.value = latestMss;
-      submitIntervals(true);
-    }else if(TESTING){
-      latestMss = '0:20-0:30,0:50-0:59,30:0-32:0';
-      console.log("TESTING. " + curVideoId + " # " + latestMss);
-      inputElement.value = latestMss;
-      submitIntervals(true);
+      inputElement.value = latestMss; // UI consistency sake only
+      intervals = strToIntervals(latestMss);
+      invokeIntervals(20);
     }
   });
 }
