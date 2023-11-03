@@ -56,7 +56,7 @@ function loadTrack(){
   const video = document.querySelector('video');
   video.addEventListener('loadeddata', function (){
     videoLoadTime = Date.now();
-    console.log("Loaded.", video.duration, urlToVideoId(pageUrl));
+    console.log("loaded.", video.duration, pageUrl ? urlToVideoId(pageUrl): null);
     if(firstLoad)
       createIntervalInput();
     else
@@ -84,16 +84,15 @@ function adBasedButtonUpdate(){
 }
 
 function adStateTrack(){
-  console.log('ad: false (default)');
-  const player = document.getElementById('movie_player');
   const video = document.querySelector('video');
+  const player = document.getElementById('movie_player');
+  console.log('player:', !!player, (video.parentElement ? !!video.parentElement.parentElement : 'FALSE'));
   function mutationCallback(mutationsList){
     adState = player.classList.contains("ad-showing");
     if (adState !== oldAdState) {
       oldAdState = adState;
       if(initDone)
-        adBasedButtonUpdate;
-      const video = document.querySelector('video');
+        adBasedButtonUpdate();
       console.log("ad: ", adState, " dur: ", video.duration);
     }
   };
@@ -225,11 +224,9 @@ function handleNewUrl() {
   inputElement.value = '';
   inputElement.placeholder = placeholder;
   inputElement.removeEventListener('input', handleInput);
-  submitButton.removeEventListener('click', submitIntervals);
   deleteButton.removeEventListener('click', handleDelete);
   
   inputElement.addEventListener('input', handleInput);
-  submitButton.addEventListener('click', submitIntervals); 
   deleteButton.addEventListener('click', handleDelete);
 
   pageUrl = video.baseURI;
@@ -255,12 +252,12 @@ function handleNewUrl() {
 }
 
 function formatTime(seconds) {
-    function pad(number) {
-      return number < 10 ? `0${number}` : number;
-    }
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${pad(secs)}`;
+  function pad(number) {
+    return number < 10 ? `0${number}` : number;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${minutes}:${pad(secs)}`;
 }
 function disableButton(button){
   button.disabled=true;
