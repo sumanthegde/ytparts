@@ -8,8 +8,10 @@ var videoLoadTime = undefined;
 var firstLoad = true;
 var initDone = false;
 const TESTING = false;
-const subTDivId = 'subTDiv7354';
-const tCopyId = 'tCopy7354';
+const subFromDivId = 'subFromDiv7354';
+const subToDivId= 'subToDiv7354';
+const tFromId = 'tFrom7354';
+const tToId= 'tTo7354';
 const inputElementId = 'inputElement7354';
 const submitButtonId = 'submitButton7354';
 const deleteButtonId = 'deleteButton7354';
@@ -217,6 +219,18 @@ function handleNewUrl() {
     submitIntervals();
   }
 
+  function handleFocus(){
+    console.log("focus called.");
+    inputElement.dir = 'auto';
+    inputElement.scrollLeft = inputElement.scrollWidth;
+  }
+
+  function handleFocusout(){
+    console.log("focusout called.");
+    inputElement.scrollLeft = inputElement.scrollWidth;
+  }
+
+
   shiner.innerText = 'Applied: ' + 'None'; 
   disableButton(deleteButton);
   disableButton(markButton);
@@ -224,9 +238,15 @@ function handleNewUrl() {
   inputElement.value = '';
   inputElement.placeholder = placeholder;
   inputElement.removeEventListener('input', handleInput);
+  inputElement.removeEventListener('focusout', handleFocusout);
+  inputElement.removeEventListener('focus', handleFocus);
+
   deleteButton.removeEventListener('click', handleDelete);
   
   inputElement.addEventListener('input', handleInput);
+  inputElement.addEventListener('focusout', handleFocusout);
+  inputElement.addEventListener('focus', handleFocus);
+  
   deleteButton.addEventListener('click', handleDelete);
 
   pageUrl = video.baseURI;
@@ -273,16 +293,27 @@ function createIntervalInput() {
   firstLoad = false;
   const belowDiv = document.getElementById('below');
   if (belowDiv) {
-    const tDiv = document.createElement("div");
-    tDiv.style.display = 'inline';
-    const tCopy = document.createElement("button");
-    tCopy.id = tCopyId;
-    tCopy.title = 'Copy this timestamp';
-    const subTDiv = document.createElement("div");
-    subTDiv.id = subTDivId;
-    subTDiv.style.fontFamily = "Courier New, monospace";
-    tCopy.appendChild(subTDiv);
-    tDiv.appendChild(tCopy);
+    const fromDiv = document.createElement("div");
+    fromDiv.style.display = 'inline';
+    const tFrom = document.createElement("button");
+    tFrom.id = tFromId;
+    tFrom.title = 'Copy current time as start time';
+    const subFromDiv = document.createElement("div");
+    subFromDiv.id = subFromDivId;
+    //subFromDiv.style.fontFamily = "Courier New, monospace";
+    tFrom.appendChild(subFromDiv);
+    fromDiv.appendChild(tFrom);
+
+    const toDiv = document.createElement("div");
+    toDiv.style.display = 'inline';
+    const tTo = document.createElement("button");
+    tTo.id = tToId;
+    tTo.title = 'Copy current time as end time';
+    const subToDiv = document.createElement("div");
+    subToDiv.id = subToDivId;
+    //subToDiv.style.fontFamily = "Courier New, monospace";
+    tTo.appendChild(subToDiv);
+    toDiv.appendChild(tTo);
 
     const inputElement = document.createElement('input');
     inputElement.id = inputElementId;
@@ -328,7 +359,8 @@ function createIntervalInput() {
     loopCheckbox.id = loopId;
     loopCheckbox.style.marginRight = '10px';
 
-    belowDiv.parentNode.insertBefore(tDiv, belowDiv);
+    belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
+    belowDiv.parentNode.insertBefore(toDiv, belowDiv);
     belowDiv.parentNode.insertBefore(inputElement, belowDiv);
     belowDiv.parentNode.insertBefore(submitButton, belowDiv);
     belowDiv.parentNode.insertBefore(shineDiv, belowDiv);
@@ -349,7 +381,7 @@ function createIntervalInput() {
   }
 }
 
-function configureButton(text, elementId, childId, tooltipMessage, disableOnClick, onClickHandler) {
+function configureButton(text, elementId, childId, disableOnClick, onClick) {
   const button = document.getElementById(elementId);
   const textHolder = childId ? document.getElementById(childId) : button;
   textHolder.innerText = text;
@@ -361,57 +393,99 @@ function configureButton(text, elementId, childId, tooltipMessage, disableOnClic
     marginRight: '10px',
     position: 'relative', 
   });
-  const tooltip = document.createElement('div');
-  tooltip.textContent = tooltipMessage;
-  tooltip.style.position = 'absolute';
-  tooltip.style.top = '-110%';
-  tooltip.style.left = '60%';
-  tooltip.style.transform = 'translateX(-50%)'; 
-  tooltip.style.backgroundColor = 'blue';
-  tooltip.style.fontSize = '0.9em';
-  const TOOLTIP_MS = 1000;
-  function showTooltip() {
+  function showTooltip(tooltipMessage) {
+    const tooltip = document.createElement('div');
+    tooltip.textContent = tooltipMessage;
+    tooltip.style.position = 'absolute';
+    tooltip.style.top = '-110%';
+    tooltip.style.left = '60%';
+    tooltip.style.transform = 'translateX(-50%)'; 
+    tooltip.style.backgroundColor = 'blue';
+    tooltip.style.fontSize = '0.9em';
+    const TOOLTIP_MS = 500;
     button.appendChild(tooltip);
+    function removeTooltip() {
+      tooltip.remove();
+    }
     setTimeout(removeTooltip, TOOLTIP_MS);
-  }
-  function removeTooltip() {
-    tooltip.remove();
   }
   button.addEventListener('click', function () {
     if (!button.disabled) {
-      showTooltip();
       if(disableOnClick){
         disableButton(button);
         button.style.backgroundColor = 'LightGrey'; 
       }
-      if (onClickHandler)
-        onClickHandler();
+      var tooltipMessage = onClick();
+      if(tooltipMessage)
+        showTooltip(tooltipMessage);
     }
   });
   return button;
+}
+
+function writeStartTime(input, t) {
+  t+=' -'
+  input=input.trim()
+  if (input.endsWith('-')) {
+    const i = input.lastIndexOf(',') + 1;
+    const trimmed = input.substring(0, i).trim();
+    return i == 0 ? t : (trimmed + ' ' + t);
+  } else {
+    return input.length == 0 ? t : (input + ', ' + t);
+  }
+}
+
+function writeEndTime(input, t) {
+  input=input.trim()
+  const i = input.lastIndexOf('-');
+  const trimmed = input.substring(0, i).trim();
+  return trimmed + ' - ' + t;
 }
 
 function addStaticListeners(){
   const video = document.querySelector('video');
   video.addEventListener("seeked", seekedHandler);
   video.addEventListener("timeupdate", timeupdateHandler);
-  const tCopy = document.getElementById(tCopyId);
-  const subTDiv = document.getElementById(subTDivId);
+  /*
+  const subFromDiv = document.getElementById(subFromDivId);
   video.addEventListener("timeupdate", function () {
     const textToCopy = formatTime(video.currentTime);
-    subTDiv.innerText= textToCopy;
+    subFromDiv.innerText= "Start";// + textToCopy;
   });
-  configureButton('0:00', tCopyId, subTDivId, 'Copied', false, function () {
+  const subToDiv = document.getElementById(subToDivId);
+  video.addEventListener("timeupdate", function () {
     const textToCopy = formatTime(video.currentTime);
+    subToDiv.innerText= "End";//"to " + textToCopy;
+  });
+  */
+  configureButton('Start', tFromId, subFromDivId, false, function () {
+    const textToCopy = formatTime(video.currentTime);
+    const inputElement = document.getElementById(inputElementId);
+    
+    inputElement.value = writeStartTime(inputElement.value, textToCopy);
+    inputElement.dispatchEvent(new Event('input'));
+    inputElement.dispatchEvent(new Event('focusout'));
+    return textToCopy;
+    /*
     navigator.clipboard.writeText(textToCopy)
         .then(() => {})
         .catch(err => {
             console.error("Unable to copy text: ", err);
         });
+    */
   });
-  configureButton('Apply', submitButtonId, submitButtonId, 'Applied', false, null);
-  configureButton('Un-apply', deleteButtonId, deleteButtonId, 'Un_applied', false, null);
-  configureButton('Bookmark!', bookmarkId, bookmarkId, null, false, function (){
+  configureButton('End', tToId, subToDivId, false, function () {
+    const textToCopy = formatTime(video.currentTime);
+    const inputElement = document.getElementById(inputElementId);
+    
+    inputElement.value = writeEndTime(inputElement.value, textToCopy);
+    inputElement.dispatchEvent(new Event('input'));
+    inputElement.dispatchEvent(new Event('focusout'));
+    return textToCopy;
+  });
+  configureButton('Apply', submitButtonId, submitButtonId, false, () => 'Applied');
+  configureButton('Un-apply', deleteButtonId, deleteButtonId, false, () => 'Un_applied');
+  configureButton('Bookmark!', bookmarkId, bookmarkId, false, function (){
     const markName = prompt("To bookmark this interval list, Enter a name.");
     if(markName){
       if(markName.length === 0)
@@ -427,9 +501,11 @@ function addStaticListeners(){
         });
       }
     }
+    return null;
   });
-  configureButton('All B.s', historyId, historyId, null, true, function () {
+  configureButton('All B.s', historyId, historyId, true, function () {
     createPopup(pageUrl,enableButton);
+    return null;
   });
 }
 
