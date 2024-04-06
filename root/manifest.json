@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Parts Looper & Bookmarker",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Play, loop & bookmark multiple portions of a YouTube video.",
   "permissions": [
     "bookmarks"
@@ -24,7 +24,7 @@
       "js": [
         "utils.js",
         "popup.js",
-        "content.js"
+        "content_ytparts.js"
       ],
       "run_at": "document_start"
     }

@@ -7,6 +7,7 @@ var oldAdState = undefined;
 var videoLoadTime = undefined;
 var firstLoad = true;
 var initDone = false;
+var themeIndex = 0;
 const TESTING = false;
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
@@ -19,6 +20,8 @@ const loopId = 'loopCheckbox7354';
 const shinerId = 'shiner7354';
 const bookmarkId = 'bookmark7354';
 const historyId = 'historyButton7354';
+const themeList = [['black','grey','lightgrey','white'], 
+                   ['white','lightgrey','dimgrey','black']];
 
 function timeupdateHandler(){
   if(adState) return;
@@ -59,6 +62,7 @@ function loadTrack(){
   video.addEventListener('loadeddata', function (){
     videoLoadTime = Date.now();
     console.log("loaded.", video.duration, pageUrl ? urlToVideoId(pageUrl): null);
+    knowTheme();
     if(firstLoad)
       createIntervalInput();
     else
@@ -173,6 +177,7 @@ function showAndFadeShiner() {
   var markButton = document.getElementById(bookmarkId);
   shiner.style.opacity = '1';
   shiner.style.transition = 'opacity 2s';
+  shiner.style.color = themeList[themeIndex][0];
   shiner.innerText = 'Applied:';
   if(intervals.length > 0){
     shiner.innerText += ' ' + msfy(intervals).replaceAll(',', ', ');
@@ -220,13 +225,11 @@ function handleNewUrl() {
   }
 
   function handleFocus(){
-    console.log("focus called.");
     inputElement.dir = 'auto';
     inputElement.scrollLeft = inputElement.scrollWidth;
   }
 
   function handleFocusout(){
-    console.log("focusout called.");
     inputElement.scrollLeft = inputElement.scrollWidth;
   }
 
@@ -235,6 +238,8 @@ function handleNewUrl() {
   disableButton(deleteButton);
   disableButton(markButton);
   inputElement.style.width = '150px';
+  inputElement.style.backgroundColor = themeList[themeIndex][3];
+  inputElement.style.color = themeList[themeIndex][0];
   inputElement.value = '';
   inputElement.placeholder = placeholder;
   inputElement.removeEventListener('input', handleInput);
@@ -281,14 +286,29 @@ function formatTime(seconds) {
 }
 function disableButton(button){
   button.disabled=true;
-  button.style.backgroundColor = 'LightGrey';
+  button.style.backgroundColor = themeList[themeIndex][2]; // 'LightGrey';
   button.style.cursor = 'default'
 }
 function enableButton(button){
   button.disabled=false;
-  button.style.backgroundColor = 'Grey';
+  button.style.backgroundColor = themeList[themeIndex][1]; // 'Grey';
   button.style.cursor = 'pointer'
 }
+
+function knowTheme() {
+    var metas = Array.from(document.head.getElementsByTagName('meta'));
+    var theme = metas.find(function(meta) {
+        return meta.getAttribute('name') === 'theme-color';
+    });
+    if(theme){
+      var val = theme.getAttribute('content');
+      if(val)
+        if(!val.includes('255'))
+          themeIndex = 1;
+    }
+    console.log("theme: " + themeIndex);
+}
+
 function createIntervalInput() {
   firstLoad = false;
   const belowDiv = document.getElementById('below');
@@ -317,6 +337,7 @@ function createIntervalInput() {
 
     const inputElement = document.createElement('input');
     inputElement.id = inputElementId;
+    inputElement.style.position = 'relative';
 
     const submitButton = document.createElement('button');
     submitButton.id= submitButtonId;
@@ -354,10 +375,14 @@ function createIntervalInput() {
     const loopLabel = document.createElement('label');
     loopLabel.setAttribute('for', loopId);
     loopLabel.innerText = ' Loop';
+    loopLabel.style.position = 'relative';
+    loopLabel.style.color = themeList[themeIndex][0];// lightTheme ? 'black' : 'white';
+    
     const loopCheckbox = document.createElement('input');
     loopCheckbox.type = 'checkbox';
     loopCheckbox.id = loopId;
     loopCheckbox.style.marginRight = '10px';
+    loopCheckbox.style.position = 'relative';
 
     belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
     belowDiv.parentNode.insertBefore(toDiv, belowDiv);
@@ -374,7 +399,6 @@ function createIntervalInput() {
     adBasedButtonUpdate();
     initDone=true;
     console.log('init done.');
-
     handleNewUrl();
   }else{
     setTimeout(createIntervalInput,300);
@@ -386,8 +410,8 @@ function configureButton(text, elementId, childId, disableOnClick, onClick) {
   const textHolder = childId ? document.getElementById(childId) : button;
   textHolder.innerText = text;
   Object.assign(button.style, {
-    backgroundColor: 'Grey',
-    color: 'white',
+    backgroundColor: themeList[themeIndex][1], // 'Grey',
+    color: themeList[themeIndex][3], //'white',
     border: 'none',
     cursor: 'pointer',
     marginRight: '10px',
@@ -413,7 +437,7 @@ function configureButton(text, elementId, childId, disableOnClick, onClick) {
     if (!button.disabled) {
       if(disableOnClick){
         disableButton(button);
-        button.style.backgroundColor = 'LightGrey'; 
+        button.style.backgroundColor = themeList[themeIndex][2]; // 'LightGrey'; 
       }
       var tooltipMessage = onClick();
       if(tooltipMessage)
@@ -439,25 +463,13 @@ function writeEndTime(input, t) {
   input=input.trim()
   const i = input.lastIndexOf('-');
   const trimmed = input.substring(0, i).trim();
-  return trimmed + ' - ' + t;
+  return (trimmed.length == 0 ? '0' : trimmed) + ' - ' + t;
 }
 
 function addStaticListeners(){
   const video = document.querySelector('video');
   video.addEventListener("seeked", seekedHandler);
   video.addEventListener("timeupdate", timeupdateHandler);
-  /*
-  const subFromDiv = document.getElementById(subFromDivId);
-  video.addEventListener("timeupdate", function () {
-    const textToCopy = formatTime(video.currentTime);
-    subFromDiv.innerText= "Start";// + textToCopy;
-  });
-  const subToDiv = document.getElementById(subToDivId);
-  video.addEventListener("timeupdate", function () {
-    const textToCopy = formatTime(video.currentTime);
-    subToDiv.innerText= "End";//"to " + textToCopy;
-  });
-  */
   configureButton('Start', tFromId, subFromDivId, false, function () {
     const textToCopy = formatTime(video.currentTime);
     const inputElement = document.getElementById(inputElementId);
@@ -486,7 +498,7 @@ function addStaticListeners(){
   configureButton('Apply', submitButtonId, submitButtonId, false, () => 'Applied');
   configureButton('Un-apply', deleteButtonId, deleteButtonId, false, () => 'Un_applied');
   configureButton('Bookmark!', bookmarkId, bookmarkId, false, function (){
-    const markName = prompt("To bookmark this interval list, Enter a name.");
+    const markName = prompt("To bookmark this interval list, enter a name.");
     if(markName){
       if(markName.length === 0)
         alert("ERROR: Name cannot be empty");
