@@ -8,6 +8,7 @@ var videoLoadTime = undefined;
 var firstLoad = true;
 var initDone = false;
 var themeIndex = 0;
+var mainVideo = null;
 const TESTING = false;
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
@@ -25,7 +26,7 @@ const themeList = [['black','grey','lightgrey','white'],
 
 function timeupdateHandler(){
   if(adState) return;
-  const video = document.querySelector('video');
+  const video = mainVideo;
   let repeat = document.getElementById(loopId).checked;
   let n = intervals.length;
   for (let i=imin; i<n; i++){
@@ -47,7 +48,7 @@ function timeupdateHandler(){
 }
 
 function seekedHandler(){
-  const video = document.querySelector('video');
+  const video = mainVideo;
   if(adState){
     return;
   }
@@ -58,11 +59,11 @@ function seekedHandler(){
 }
 
 function loadTrack(){
-  const video = document.querySelector('video');
+  knowTheme();
+  const video = mainVideo;
   video.addEventListener('loadeddata', function (){
     videoLoadTime = Date.now();
     console.log("loaded.", video.duration, pageUrl ? urlToVideoId(pageUrl): null);
-    knowTheme();
     if(firstLoad)
       createIntervalInput();
     else
@@ -90,9 +91,8 @@ function adBasedButtonUpdate(){
 }
 
 function adStateTrack(){
-  const video = document.querySelector('video');
+  const video = mainVideo;
   const player = document.getElementById('movie_player');
-  console.log('player:', !!player, (video.parentElement ? !!video.parentElement.parentElement : 'FALSE'));
   function mutationCallback(mutationsList){
     adState = player.classList.contains("ad-showing");
     if (adState !== oldAdState) {
@@ -105,7 +105,6 @@ function adStateTrack(){
   var observer = new MutationObserver(mutationCallback);
   observer.observe(player, { attributes: true, attributeFilter: ['class'] });
 }
-
 
 function submitIntervalsOnEnter(event){
   if (event.key === 'Enter' && event.target.value.trim() !== '')
@@ -144,7 +143,7 @@ function submitIntervals() {
     alert(timestampFail);
     return;
   }
-  const video = document.querySelector('video');
+  const video = mainVideo;
   const videoLen = video.duration;
   const maxt = Math.trunc(videoLen)-1;
   const capped = intervalsCsv.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
@@ -154,7 +153,7 @@ function submitIntervals() {
 }
 
 function invokeIntervals(k){
-  const video = document.querySelector('video');
+  const video = mainVideo;
   const t = video.currentTime;
   if(!adState && video.readyState===4 && (Date.now()-videoLoadTime>100)){
     imin = 0;
@@ -195,7 +194,7 @@ function showAndFadeShiner() {
 }
 
 function handleNewUrl() {
-  const video = document.querySelector('video');
+  const video = mainVideo;
   if(video.baseURI === pageUrl)
     return;
   pageUrl = undefined; // video.baseURI may be null yet
@@ -467,7 +466,7 @@ function writeEndTime(input, t) {
 }
 
 function addStaticListeners(){
-  const video = document.querySelector('video');
+  const video = mainVideo;
   video.addEventListener("seeked", seekedHandler);
   video.addEventListener("timeupdate", timeupdateHandler);
   configureButton('Start', tFromId, subFromDivId, false, function () {
@@ -523,17 +522,31 @@ function addStaticListeners(){
 
 
 function awaitVideo() {
-  const video = document.querySelector('video');
-  if(video)
+  function grandkidOfMoviePlayer(v){
+    let vv, vvv;
+    if((vv = v.parentElement))
+      if((vvv = vv.parentElement))
+        if(vvv.id === 'movie_player')
+          return true;
+    return false;
+  }
+  let videos = [...document.querySelectorAll('video')].filter(grandkidOfMoviePlayer);
+  if(videos.length>1)
+    console.log("WUT?!", videos);
+  if(videos.length>0){
+    mainVideo = videos[0];
     loadTrack();
-  else{
+  }else{
+    console.log("observing..");
     function handleMutations(mutationsList, observer) {
       mutationsList.forEach((mutation) => {
         if (mutation.addedNodes.length > 0) {
           for (let i = 0; i < mutation.addedNodes.length; i++) {
-            if (mutation.addedNodes[i].tagName === 'VIDEO') {
-              loadTrack();
+            const node = mutation.addedNodes[i];
+            if (node.tagName === 'VIDEO' && grandkidOfMoviePlayer(node)){
               observer.disconnect();
+              mainVideo = node;
+              loadTrack();
               break;
             }
           }
