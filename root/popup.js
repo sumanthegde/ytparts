@@ -30,6 +30,7 @@ function createPopup(mainUrl, enableButton) {
   const closeButton = document.createElement("button");
   closeButton.id = "closeButton7354";
   closeButton.textContent = "Close";
+  closeButton.style.borderRadius= "3px";
   Object.assign(closeButton.style, styleConfig.anyButton);
   titleBar.appendChild(document.createTextNode("Previously Bookmarked Intervals"));
   titleBar.appendChild(closeButton);
@@ -124,6 +125,7 @@ function createList(mainVideoId, container, bookObjects) {
     const deleteCell = document.createElement("td");
     const deleteButton = document.createElement("button");
     deleteButton.innerText = 'Delete';
+    deleteButton.style.borderRadius = '3px';
     Object.assign(deleteButton.style, styleConfig.anyButton);
     deleteButton.addEventListener('click', function () {
       chrome.runtime.sendMessage({ type: 'delete', payload: bookObject });

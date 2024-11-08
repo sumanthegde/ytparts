@@ -9,6 +9,14 @@ var firstLoad = true;
 var initDone = false;
 var themeIndex = 0;
 var mainVideo = null;
+var updatedTime = 0;
+var internalSeek = false;
+var loopDefault = undefined;
+var currentShortcuts = {
+  start: { key: ',', modifiers: ['shift', 'meta'] },
+  end: { key: '.', modifiers: ['shift', 'meta'] }
+};
+
 const TESTING = false;
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
@@ -22,7 +30,9 @@ const shinerId = 'shiner7354';
 const bookmarkId = 'bookmark7354';
 const historyId = 'historyButton7354';
 const themeList = [['black','grey','lightgrey','white'], 
-                   ['white','lightgrey','dimgrey','black']];
+                   ['white','lightgrey','dimgrey','black']
+];
+
 
 function timeupdateHandler(){
   if(adState) return;
@@ -45,6 +55,36 @@ function timeupdateHandler(){
     video.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
     return;
   }
+}
+
+function timeupdateHandler2(){
+  if(adState) return;
+  let curTime = mainVideo.currentTime;
+  let dt = curTime - updatedTime;
+  let savedInternalSeek = internalSeek;
+  if(0<dt && dt<0.5){
+    let n = intervals.length;
+    for(let i=imin; i<n; i++){
+      const [open,close] = intervals[i];
+      let endr = close; //close + 0.1;
+      if(updatedTime < endr && endr <= curTime){
+        imin=i+1;
+        if (imin == n && document.getElementById(loopId).checked)
+          imin = 0;
+        internalSeek = true;
+        mainVideo.currentTime = imin == n ? mainVideo.duration : intervals[imin][0];
+        break;
+      }
+    }
+  }else{
+    if(!internalSeek)
+      imin = 0;
+    else
+      internalSeek = false;
+  }
+  if(savedInternalSeek)
+    internalSeek = false;
+  updatedTime = curTime;
 }
 
 function seekedHandler(){
@@ -116,11 +156,11 @@ function submitIntervalsOnClick(){
 }
 
 function strToIntervals(str){
-  return str.split(',').map(intervalStr => intervalStr.split('-').map(timeStr => parseTime(timeStr)))
+  return str.split(',').map(intervalStr => intervalStr.split('-').map(features[fversion].toSeconds))
 }
 
 function submitIntervals() {
-  const intervalsStr = document.getElementById(inputElementId).value;
+  const intervalsStr = document.getElementById(inputElementId).value.replaceAll('—','-');
   if (intervalsStr.trim()===''){
     intervals=[];
     showAndFadeShiner();
@@ -145,7 +185,7 @@ function submitIntervals() {
   }
   const video = mainVideo;
   const videoLen = video.duration;
-  const maxt = Math.trunc(videoLen)-1;
+  const maxt = videoLen-features[fversion].maxtgap;
   const capped = intervalsCsv.map(([start,end]) => [start>maxt ? maxt:start, end>maxt ? maxt:end]);
   intervals = mergeAndSortIntervals(capped);
   console.log(intervals);
@@ -177,9 +217,10 @@ function showAndFadeShiner() {
   shiner.style.opacity = '1';
   shiner.style.transition = 'opacity 2s';
   shiner.style.color = themeList[themeIndex][0];
+  shiner.style.fontSize = intervals.length > 3 ? '1em' : '1.2em';
   shiner.innerText = 'Applied:';
   if(intervals.length > 0){
-    shiner.innerText += ' ' + msfy(intervals).replaceAll(',', ', ');
+    shiner.innerText += ' ' + msfy(intervals).replaceAll('-','—').replaceAll('.0','').replaceAll(',', ', \u00A0');
     enableButton(deleteButton);
     enableButton(markButton);
   }else{
@@ -203,7 +244,7 @@ function handleNewUrl() {
   lastStart = -1;
   imin = 0;
 
-  const placeholder = 'e.g. 0:30-0:45, 1:15-1:30';
+  const placeholder = features[fversion].exampleText; // 'e.g. 0:30-0:45, 1:15-1:30';
   const inputElement = document.getElementById(inputElementId);
   const submitButton = document.getElementById(submitButtonId);
   const deleteButton = document.getElementById(deleteButtonId);
@@ -241,6 +282,7 @@ function handleNewUrl() {
   inputElement.style.color = themeList[themeIndex][0];
   inputElement.value = '';
   inputElement.placeholder = placeholder;
+  inputElement.style.border = '0.4px solid ' + themeList[themeIndex][2];
   inputElement.removeEventListener('input', handleInput);
   inputElement.removeEventListener('focusout', handleFocusout);
   inputElement.removeEventListener('focus', handleFocus);
@@ -261,15 +303,12 @@ function handleNewUrl() {
       return bookObject.videoId === curVideoId;
     });
     filteredBookObjects.sort((a, b) => b.timestamp - a.timestamp);
-    if(TESTING){
-      latestMss = '0:20-0:30,0:50-0:59,30:0-32:0';
-      console.log("TESTING.");
-    }
     if (filteredBookObjects.length > 0) {
       latestMss = filteredBookObjects[0].mss;
       console.log(curVideoId + " # " + latestMss);
-      inputElement.value = latestMss; // UI consistency sake only
-      intervals = strToIntervals(latestMss);
+      dotted = latestMss.includes('.');
+      intervals = strToIntervals(latestMss).map(intl => features[fversion].prolongEnd(intl, dotted)); 
+      inputElement.value = msfy(intervals).replaceAll('-',' - ').replaceAll('.0','').replaceAll(',', ', '); // UI consistency sake only
       invokeIntervals(20);
     }
   });
@@ -280,7 +319,7 @@ function formatTime(seconds) {
     return number < 10 ? `0${number}` : number;
   }
   const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
+  const secs = features[fversion].truncSec(seconds%60); // Math.trunc((seconds % 60)*10)/10;
   return `${minutes}:${pad(secs)}`;
 }
 function disableButton(button){
@@ -349,7 +388,7 @@ function createIntervalInput() {
     const shiner = document.createElement('div');
     shiner.id = shinerId;
     shiner.innerText = '';
-    shiner.style.fontSize = '1.2em';
+    shiner.style.fontSize = '1em'; // '1.2em';
     shiner.style.opacity = '0';
     shiner.style.marginRight = '10px';
     shineDiv.appendChild(shiner);
@@ -376,12 +415,13 @@ function createIntervalInput() {
     loopLabel.innerText = ' Loop';
     loopLabel.style.position = 'relative';
     loopLabel.style.color = themeList[themeIndex][0];// lightTheme ? 'black' : 'white';
-    
+
     const loopCheckbox = document.createElement('input');
     loopCheckbox.type = 'checkbox';
     loopCheckbox.id = loopId;
     loopCheckbox.style.marginRight = '10px';
     loopCheckbox.style.position = 'relative';
+    loopCheckbox.checked = loopDefault;
 
     belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
     belowDiv.parentNode.insertBefore(toDiv, belowDiv);
@@ -415,6 +455,7 @@ function configureButton(text, elementId, childId, disableOnClick, onClick) {
     cursor: 'pointer',
     marginRight: '10px',
     position: 'relative', 
+    borderRadius: '2px',
   });
   function showTooltip(tooltipMessage) {
     const tooltip = document.createElement('div');
@@ -467,8 +508,9 @@ function writeEndTime(input, t) {
 
 function addStaticListeners(){
   const video = mainVideo;
-  video.addEventListener("seeked", seekedHandler);
-  video.addEventListener("timeupdate", timeupdateHandler);
+//  video.addEventListener("seeked", seekedHandler);
+//  video.addEventListener("timeupdate", timeupdateHandler2);
+  features[fversion].addPlayerListeners(video);
   configureButton('Start', tFromId, subFromDivId, false, function () {
     const textToCopy = formatTime(video.currentTime);
     const inputElement = document.getElementById(inputElementId);
@@ -508,7 +550,9 @@ function addStaticListeners(){
           type: 'save',
           url: pageUrl,
           name: markName,
-          intls: intervals
+          intls: intervals,
+          intlstr: msfy(intervals),
+          t: intervals.length > 0 ? Math.floor(intervals[0][0]) : 0
         });
       }
     }
@@ -558,5 +602,85 @@ function awaitVideo() {
   }
 }
 
+function matchesShortcut(event, shortcut) {
+  const keyMatches = event.key.toLowerCase() === shortcut.key.toLowerCase();
+  const modifiersMatch = shortcut.modifiers.every(modifier => {
+    switch (modifier) {
+      case 'meta':
+        // meta means Cmd on Mac and Ctrl on Windows/Linux
+        return navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? 
+          event.metaKey : event.ctrlKey;
+      case 'shift':
+        return event.shiftKey;
+      case 'alt':
+        return event.altKey;
+      default:
+        return false;
+    }
+  });
+  const noExtraModifiers = !(
+    (!shortcut.modifiers.includes('meta') && (event.metaKey || event.ctrlKey)) ||
+    (!shortcut.modifiers.includes('shift') && event.shiftKey) ||
+    (!shortcut.modifiers.includes('alt') && event.altKey)
+  );
+  return keyMatches && modifiersMatch && noExtraModifiers;
+}
+
+// (async function() {
+//   // Get settings
+//   const items = await new Promise(resolve => chrome.storage.sync.get(['allowPrecision', 'loopDefault'], resolve));
+//   const allowPrecision = items.allowPrecision || false;
+//   fversion = allowPrecision ? 1 : 0;
+//   loopDefault = items.loopDefault || false;
+//   console.log(`fversion ${fversion}, loopDefault ${loopDefault}`);
+
+//   chrome.storage.sync.get({ shortcuts: currentShortcuts }, function(items) {
+//     currentShortcuts = items.shortcuts;
+//   });
+//   document.addEventListener('keydown', function(e) {
+//     if (matchesShortcut(e, currentShortcuts.start)) {
+//       e.preventDefault();
+//       if((tFromBtn = document.getElementById(tFromId))){
+//         tFromBtn.click();
+//       }
+//     } else if (matchesShortcut(e, currentShortcuts.end)) {
+//       e.preventDefault();
+//       if((tToBtn = document.getElementById(tToId))){
+//         tToBtn.click();
+//       }
+//     }
+//   });
+
+//   document.addEventListener('DOMContentLoaded', awaitVideo);
+// })();
+
+async function initContentScript() {
+  // Retrieve settings from Chrome storage
+  const { allowPrecision = false, loopDefault = false, shortcuts = {} } = await new Promise(resolve =>
+    chrome.storage.sync.get(['allowPrecision', 'loopDefault', 'shortcuts'], resolve)
+  );
+
+  const fversion = allowPrecision ? 1 : 0;
+  console.log(`fversion ${fversion}, loopDefault ${loopDefault}`);
+
+  const { start: startShortcut, end: endShortcut } = shortcuts;
+
+  // Handle keydown events for start and end shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (matchesShortcut(e, startShortcut)) {
+      e.preventDefault();
+      const tFromBtn = document.getElementById(tFromId);
+      tFromBtn?.click();
+    } else if (matchesShortcut(e, endShortcut)) {
+      e.preventDefault();
+      const tToBtn = document.getElementById(tToId);
+      tToBtn?.click();
+    }
+  });
+
+  // Wait for the video to be ready
+  document.addEventListener('DOMContentLoaded', awaitVideo);
+}
+
 console.log("Version " + chrome.runtime.getManifest().version);
-document.addEventListener('DOMContentLoaded', awaitVideo);
+initContentScript();

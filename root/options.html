@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="options.css">
+  </head>
+  <body>
+    <div id="container">
+      <h1>Extension Settings</h1>
+
+      <div class="settings-section">
+        <h2>Keyboard Shortcuts</h2>
+        <div class="setting-item shortcut-item">
+          <div class="shortcut-label">Start button</div>
+          <div class="shortcut-input" id="startShortcut" tabindex="0">
+            <span class="shortcut-display"></span>
+          </div>
+        </div>
+        <div class="setting-item shortcut-item">
+          <div class="shortcut-label">End button</div>
+          <div class="shortcut-input" id="endShortcut" tabindex="0">
+            <span class="shortcut-display"></span>
+          </div>
+        </div>
+        <div class="shortcut-help">Click to record a new shortcut. Press Esc to cancel.</div>
+      </div>
+
+      <div class="settings-section">
+        <h2>Defaults</h2>
+        <div class="setting-item">
+          <label for="loopSlider">
+            Loop by default
+            <input type="range" id="loopSlider" min="0" max="1" step="1">
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h2>Experimental Features</h2>
+        <div class="setting-item">
+          <label for="precisionSlider">
+            Accept decimal points in timestamp input (up to 0.1s)
+            <input type="range" id="precisionSlider" min="0" max="1" step="1">
+          </label>
+        </div>
+      </div>
+      
+      <div class="button-container">
+        <button id="saveButton">Save</button>
+        <div id="messageDiv"></div>
+      </div>
+
+     
+      <!--
+      <div id="feedbackSection" style="margin-top: 90px;">
+        <h2>Feedback</h2>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfv0icT4eRszk90ZYib2pbp3myGY4p3aaQqlQeza9hry_UoBw/viewform" target="_blank" class="feedback-link">
+          Share your thoughts
+        </a>
+      </div>
+      -->
+     
+
+
+
+    <div class="settings-section" style="flex: 1; margin-top: 90px;">
+      <h2>If you like to support the project...</h2>
+      <div id="paymentLinks" class="flex-container">
+        <a id="paypalLink" class="support-button" href="https://www.paypal.com/ncp/payment/GCX6PVNUHLP3Y" target="_blank">
+          PayPal
+        </a>
+        <a id="buyMeACoffeeLink" class="support-button" href="https://buymeacoffee.com/teatotaler" target="_blank">
+          Buy me a coffee
+        </a>
+        <a id="koFiLink" class="support-button" href="https://ko-fi.com/teatotaler" target="_blank">
+          Ko-fi
+        </a>
+      </div>
+    </div>
+
+
+    <script src="options.js"></script>
+  </body>
+</html>

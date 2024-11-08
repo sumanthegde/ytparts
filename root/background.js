@@ -19,37 +19,53 @@ function createFolder() {
   });
 }
 
-function msfy(ints) {
-  if (!Array.isArray(ints)) {
-    return '';
-  }
+function createAndDeleteTempFolder() {
+  let folderName = dirName + 'Temp';
+  // Create the bookmark folder
+  chrome.bookmarks.create(
+    { 'title': folderName },
+    function (folder) {
+      //console.log(`Created folder: ${folder.title}`);
 
-  const formattedIntervals = ints.map(interval => {
-    if (Array.isArray(interval) && interval.length === 2) {
-      const [start, end] = interval;
-      const startMinutes = Math.floor(start / 60);
-      const startSeconds = start % 60;
-      const endMinutes = Math.floor(end / 60);
-      const endSeconds = end % 60;
-
-      const formattedStart = `${startMinutes}:${startSeconds}`;
-      const formattedEnd = `${endMinutes}:${endSeconds}`;
-
-      return `${formattedStart}-${formattedEnd}`;
+      // Delete the bookmark folder
+      chrome.bookmarks.remove(folder.id, function() {
+        //console.log(`Deleted folder: ${folder.title}`);
+      });
     }
-  });
-  return formattedIntervals.join(',');
+  );
 }
+
+// function msfy(ints) {
+//   if (!Array.isArray(ints)) {
+//     return '';
+//   }
+
+//   const formattedIntervals = ints.map(interval => {
+//     if (Array.isArray(interval) && interval.length === 2) {
+//       const [start, end] = interval;
+//       const startMinutes = Math.floor(start / 60);
+//       const startSeconds = String((start % 60).toFixed(1)).padStart(2, '0');
+//       const endMinutes = Math.floor(end / 60);
+//       const endSeconds = String((end % 60).toFixed(1)).padStart(2, '0');
+
+//       const formattedStart = `${startMinutes}:${startSeconds}`;
+//       const formattedEnd = `${endMinutes}:${endSeconds}`;
+
+//       return `${formattedStart}-${formattedEnd}`;
+//     }
+//   });
+//   return formattedIntervals.join(',');
+// }
 
 function pack(dto){
   const n = 100000;
   //const rand = Math.floor(Math.random() * n) + n;
-  var start = (dto.intls)[0][0];
+  //var start = (dto.intls)[0][0];
   var urlObj = new URL(dto.url);
-  urlObj.searchParams.set('t', start);
+  urlObj.searchParams.set('t', dto.t);
   var videoId = urlObj.searchParams.get('v');
   var newurl = urlObj.toString();
-  var mss = msfy(dto.intls);
+  var mss = dto.intlstr; //msfy(dto.intls);
   var timestamp = Date.now();
   var newname = videoId + '#' + timestamp + '#' + mss + '#' + dto.name;
   return ({parentId: folderId, title: newname, url: newurl}); 
@@ -71,6 +87,7 @@ function expand(entity){
 function saveBookmark(request, onExists) {
   if (folderId) {
     chrome.bookmarks.create(pack(request));
+    createAndDeleteTempFolder();
   } else {
     console.error("Error: Folder ID is not available.");
   }
@@ -78,13 +95,14 @@ function saveBookmark(request, onExists) {
 
 function deleteBookmark(bigdto, sendResponse){
   if (folderId) {
-    console.log("about to 'bookmarks.get': ", bigdto);
+    //console.log("about to 'bookmarks.get': ", bigdto);
     chrome.bookmarks.get(bigdto.systemId, function(bookmarks){
       if(bookmarks.length>0){
         var bookmark = bookmarks[0];
         var newtitle = bigdto.videoId + '#' + Date.now() + '#' + bigdto.mss + '#' + bigdto.name;
         bookmark.title = newtitle;
         chrome.bookmarks.remove(bookmark.id, function() {
+          createAndDeleteTempFolder();
           console.log("Bookmark deleted: ", bigdto);
           sendResponse(0);
         });
@@ -124,4 +142,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 createFolder();
+
+
 
