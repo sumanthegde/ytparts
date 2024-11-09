@@ -12,10 +12,7 @@ var mainVideo = null;
 var updatedTime = 0;
 var internalSeek = false;
 var loopDefault = undefined;
-var currentShortcuts = {
-  start: { key: ',', modifiers: ['shift', 'meta'] },
-  end: { key: '.', modifiers: ['shift', 'meta'] }
-};
+var shortcuts = undefined;
 
 const TESTING = false;
 const subFromDivId = 'subFromDiv7354';
@@ -169,7 +166,8 @@ function submitIntervals() {
   const example = ' Example: "00:30 - 00:45, 1:55 - 2:05" (without quotes)';
   const pattern = /^\s*[0-9.:\s]+-[0-9.:\s]+(,\s*[0-9.:\s]+-[0-9.:\s]+)*\s*$/;
   const patternFail = 'Input format should be startTime-endTime,startTime-endTime,... etc.' + example;
-  const timestampFail = 'Ensure startTime ≤ endTime, and that timestamps are in h:m:s or m:s or s format.' + example;
+  const timestampFail = 'Ensure startTime ' + features[fversion].vectorSign + ' endTime,' + 
+  ' and that timestamps are in h:m:s or m:s or s format.' + example;
   if (intervalsStr.length>200){
     alert("Input too long.");
     return;
@@ -179,7 +177,7 @@ function submitIntervals() {
     return;
   }
   const intervalsCsv = strToIntervals(intervalsStr);
-  if(intervalsCsv.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || interval[0] > interval[1])){
+  if(intervalsCsv.some(interval => isNaN(interval[0]) || isNaN(interval[1]) || !features[fversion].vectorCheck(interval[0],interval[1]))){
     alert(timestampFail);
     return;
   }
@@ -243,7 +241,6 @@ function handleNewUrl() {
   intervals = []; 
   lastStart = -1;
   imin = 0;
-
   const placeholder = features[fversion].exampleText; // 'e.g. 0:30-0:45, 1:15-1:30';
   const inputElement = document.getElementById(inputElementId);
   const submitButton = document.getElementById(submitButtonId);
@@ -536,6 +533,7 @@ function addStaticListeners(){
     inputElement.dispatchEvent(new Event('focusout'));
     return textToCopy;
   });
+  addShortcutListeners();
   configureButton('Apply', submitButtonId, submitButtonId, false, () => 'Applied');
   configureButton('Un-apply', deleteButtonId, deleteButtonId, false, () => 'Un_applied');
   configureButton('Bookmark!', bookmarkId, bookmarkId, false, function (){
@@ -626,60 +624,64 @@ function matchesShortcut(event, shortcut) {
   return keyMatches && modifiersMatch && noExtraModifiers;
 }
 
-// (async function() {
-//   // Get settings
-//   const items = await new Promise(resolve => chrome.storage.sync.get(['allowPrecision', 'loopDefault'], resolve));
-//   const allowPrecision = items.allowPrecision || false;
-//   fversion = allowPrecision ? 1 : 0;
-//   loopDefault = items.loopDefault || false;
-//   console.log(`fversion ${fversion}, loopDefault ${loopDefault}`);
-
-//   chrome.storage.sync.get({ shortcuts: currentShortcuts }, function(items) {
-//     currentShortcuts = items.shortcuts;
-//   });
-//   document.addEventListener('keydown', function(e) {
-//     if (matchesShortcut(e, currentShortcuts.start)) {
-//       e.preventDefault();
-//       if((tFromBtn = document.getElementById(tFromId))){
-//         tFromBtn.click();
-//       }
-//     } else if (matchesShortcut(e, currentShortcuts.end)) {
-//       e.preventDefault();
-//       if((tToBtn = document.getElementById(tToId))){
-//         tToBtn.click();
-//       }
-//     }
-//   });
-
-//   document.addEventListener('DOMContentLoaded', awaitVideo);
-// })();
-
-async function initContentScript() {
-  // Retrieve settings from Chrome storage
-  const { allowPrecision = false, loopDefault = false, shortcuts = {} } = await new Promise(resolve =>
-    chrome.storage.sync.get(['allowPrecision', 'loopDefault', 'shortcuts'], resolve)
-  );
-
-  const fversion = allowPrecision ? 1 : 0;
-  console.log(`fversion ${fversion}, loopDefault ${loopDefault}`);
-
-  const { start: startShortcut, end: endShortcut } = shortcuts;
-
-  // Handle keydown events for start and end shortcuts
+function addShortcutListeners(){
+  if (!shortcuts?.start || !shortcuts?.end) {
+    console.warn('Shortcuts not properly initialized:', shortcuts);
+    return;
+  }
   document.addEventListener('keydown', (e) => {
-    if (matchesShortcut(e, startShortcut)) {
+    if (matchesShortcut(e, shortcuts.start)) {
       e.preventDefault();
       const tFromBtn = document.getElementById(tFromId);
       tFromBtn?.click();
-    } else if (matchesShortcut(e, endShortcut)) {
+    } else if (matchesShortcut(e, shortcuts.end)) {
       e.preventDefault();
       const tToBtn = document.getElementById(tToId);
       tToBtn?.click();
     }
   });
+}
 
-  // Wait for the video to be ready
-  document.addEventListener('DOMContentLoaded', awaitVideo);
+async function getBrowserStorage(keys, defaults) {
+  return new Promise(resolve => chrome.storage.sync.get(defaults, resolve));
+}
+
+
+async function initContentScript() {
+  try {
+    // Copied from options.js
+    const defaultShortcuts = {
+      start: {
+        key: ',',
+        modifiers: ['shift', 'meta']
+      },
+      end: {
+        key: '.',
+        modifiers: ['shift', 'meta']
+      }
+    };
+    const defaults = {
+      allowPrecision: false,
+      loopDefault: false,
+      shortcuts: defaultShortcuts
+    };
+
+    // Retrieve settings with defaults
+    const storageResult = await getBrowserStorage(['allowPrecision', 'loopDefault', 'shortcuts'], defaults);
+    
+    loopDefault = storageResult.loopDefault;
+    fversion = storageResult.allowPrecision ? 1 : 0;
+    shortcuts = storageResult.shortcuts;
+
+    console.log(`fversion: ${fversion}, loopDefault: ${loopDefault}, shortcuts:`, shortcuts);
+    //    const { start: startShortcut, end: endShortcut } = shortcuts;
+
+    
+    // Wait for the video to be ready
+    document.addEventListener('DOMContentLoaded', awaitVideo);
+  } catch (error) {
+    console.error('Failed to initialize content script:', error);
+  }
 }
 
 console.log("Version " + chrome.runtime.getManifest().version);

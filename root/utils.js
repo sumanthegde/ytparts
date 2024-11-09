@@ -14,7 +14,9 @@ const features = [
     minGap: 1,  // for interval merging
     prolongEnd: function(x,_dotted) {return x;}, // from bookmarks to input box
     //    truncDecimals: function(str) {return str.replace(/\.\d+/g, "");}, // from bookmarks to input box
-    exampleText: 'e.g. 0:30-0:45, 1:15-1:30'
+    exampleText: 'e.g. 0:30-0:45, 1:15-1:30',
+    vectorCheck: function(x,y){return x<=y;},
+    vectorSign: '≤'
   },
   {
     maxtgap: 0.5,
@@ -27,7 +29,9 @@ const features = [
     minGap: 0.2, // In view of 0.25s gap between timeupdate events
 //    truncDecimals: function(str) {return str;},
     prolongEnd: function([l,r],dotted) {return [l,!dotted && Math.abs(r - Math.round(r)) < 0.001 ? r+0.9 : r];},
-    exampleText: 'e.g. 0 - 60, 2:0.0 - 2:0.9'
+    exampleText: 'e.g. 0 - 60, 2:0.0 - 2:0.9',
+    vectorCheck: function(x,y){return x<y;},
+    vectorSign: '<'
   }
 ]
 

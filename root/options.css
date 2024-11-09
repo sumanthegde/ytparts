@@ -48,6 +48,8 @@ label {
 /* Slider styles */
 input[type="range"] {
   -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 40px;
   height: 20px;
   background: #ddd;
@@ -57,6 +59,30 @@ input[type="range"] {
   margin-left: 16px;
 }
 
+/* Firefox-specific styles */
+input[type="range"]::-moz-range-track {
+  width: 40px;
+  height: 20px;
+  background: #ddd;
+  border-radius: 10px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: #808080;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+input[type="range"][data-value="1"]::-moz-range-thumb {
+  background: #0073e6;
+}
+
+/* Chrome/Safari styles (existing) */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 20px;

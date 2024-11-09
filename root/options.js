@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const endShortcut = document.getElementById('endShortcut');
 
   // Detect OS for showing appropriate key symbols
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isMac = navigator.userAgent.toLowerCase().includes('mac');
   
   // Define key symbols with proper encoding
   const keySymbols = {
@@ -16,15 +16,15 @@ document.addEventListener('DOMContentLoaded', function() {
     alt: isMac ? 'Option' : 'Alt',
   };
 
-  // Default shortcuts
+  // Default shortcuts. Identical copy used in content script.
   const defaultShortcuts = {
     start: {
       key: ',',
-      modifiers: ['shift', 'meta']  // meta is cmd on Mac, ctrl on Windows
+      modifiers: ['meta', 'shift']  // meta is Cmd on Mac, Ctrl on Windows
     },
     end: {
       key: '.',
-      modifiers: ['shift', 'meta']
+      modifiers: ['meta', 'shift']
     }
   };
 
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
     e.preventDefault();
 
     const modifiers = [];
-    if (e.metaKey || e.ctrlKey) modifiers.push('meta');
+    if ((isMac && e.metaKey) || (!isMac && e.ctrlKey)) modifiers.push('meta');
     if (e.shiftKey) modifiers.push('shift');
     if (e.altKey) modifiers.push('alt');
 
@@ -120,10 +120,22 @@ document.addEventListener('DOMContentLoaded', function() {
     chrome.storage.sync.get({shortcuts: defaultShortcuts}, function(items) {
       const shortcuts = items.shortcuts;
 
+      // Reset any "Press keys..." messages before saving
+      if (isRecording) {
+        displayShortcut(isRecording.querySelector('.shortcut-display'), 
+          isRecording.id === 'startShortcut' ? shortcuts.start : shortcuts.end);
+        stopRecording();
+      }
+
       if (startShortcut.dataset.pendingShortcut) {
         shortcuts.start = JSON.parse(startShortcut.dataset.pendingShortcut);
         delete startShortcut.dataset.pendingShortcut;
       }
+      if (endShortcut.dataset.pendingShortcut) {
+        shortcuts.end = JSON.parse(endShortcut.dataset.pendingShortcut);
+        delete endShortcut.dataset.pendingShortcut;
+      }
+
       if (endShortcut.dataset.pendingShortcut) {
         shortcuts.end = JSON.parse(endShortcut.dataset.pendingShortcut);
         delete endShortcut.dataset.pendingShortcut;
