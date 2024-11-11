@@ -57,6 +57,11 @@ function timeupdateHandler(){
 function timeupdateHandler2(){
   if(adState) return;
   let curTime = mainVideo.currentTime;
+  if(curTime + 0.3 > mainVideo.duration && document.getElementById(loopId).checked){
+    imin = 0;
+    mainVideo.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
+    return;
+  }
   let dt = curTime - updatedTime;
   let savedInternalSeek = internalSeek;
   if(0<dt && dt<0.5){
@@ -74,10 +79,10 @@ function timeupdateHandler2(){
       }
     }
   }else{
-    if(!internalSeek)
-      imin = 0;
-    else
+    if(internalSeek)
       internalSeek = false;
+    else
+      imin = 0;
   }
   if(savedInternalSeek)
     internalSeek = false;
