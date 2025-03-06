@@ -100,18 +100,28 @@ function seekedHandler(){
   imin = 0;
 }
 
+function initButtonsAndHandleNewUrl(video){
+  videoLoadTime = Date.now();
+  if(firstLoad)
+    createIntervalInput();
+  else
+    handleNewUrl();
+}
+
 function loadTrack(){
   knowTheme();
   const video = mainVideo;
+
+  console.log(video.baseURI.substring(0, 43).slice(-11), video.duration, video.readyState);
   video.addEventListener('loadeddata', function (){
-    videoLoadTime = Date.now();
-    console.log("loaded.", video.duration, pageUrl ? urlToVideoId(pageUrl): null);
-    if(firstLoad)
-      createIntervalInput();
-    else
-      handleNewUrl();
+    console.log('loadeddata.', video.duration, pageUrl ? urlToVideoId(pageUrl): null);
+    initButtonsAndHandleNewUrl(video);
   });
+
   adStateTrack();
+  
+  if (video.duration > 0) 
+    initButtonsAndHandleNewUrl(video);
 }
 
 function adBasedButtonUpdate(){
@@ -173,7 +183,7 @@ function submitIntervals() {
   const patternFail = 'Input format should be startTime-endTime,startTime-endTime,... etc.' + example;
   const timestampFail = 'Ensure startTime ' + features[fversion].vectorSign + ' endTime,' + 
   ' and that timestamps are in h:m:s or m:s or s format.' + example;
-  if (intervalsStr.length>200){
+  if (intervalsStr.length>300){
     alert("Input too long.");
     return;
   }
@@ -238,6 +248,8 @@ function showAndFadeShiner() {
 }
 
 function handleNewUrl() {
+  if(!initDone) // To handle concurrent initButtonsAndHandleNewUrl() calls
+    return; 
   const video = mainVideo;
   if(video.baseURI === pageUrl)
     return;
