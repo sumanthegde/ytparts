@@ -15,6 +15,8 @@ var loopDefault = undefined;
 var shortcuts = undefined;
 
 const TESTING = false;
+const PRE_END_S = 0.3; // Allow normal playback for last PRE_END_S duration, to ensure a timeupdateHandler2() call
+const EPSILON_S = 0.1; // Allow normal playback for last EPSILON_S duration, to ensure good state (e.g. readyState=4)
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
 const tFromId = 'tFrom7354';
@@ -57,7 +59,7 @@ function timeupdateHandler(){
 function timeupdateHandler2(){
   if(adState) return;
   let curTime = mainVideo.currentTime;
-  if(curTime + 0.3 > mainVideo.duration && document.getElementById(loopId).checked){
+  if(curTime + PRE_END_S > mainVideo.duration && document.getElementById(loopId).checked){
     imin = 0;
     mainVideo.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
     return;
@@ -74,7 +76,7 @@ function timeupdateHandler2(){
         if (imin == n && document.getElementById(loopId).checked)
           imin = 0;
         internalSeek = true;
-        mainVideo.currentTime = imin == n ? mainVideo.duration : intervals[imin][0];
+        mainVideo.currentTime = imin == n ? mainVideo.duration - EPSILON_S : intervals[imin][0];
         break;
       }
     }
@@ -120,7 +122,7 @@ function loadTrack(){
 
   adStateTrack();
   
-  if (video.duration > 0) 
+  if (video.duration > 0) // Video already loaded
     initButtonsAndHandleNewUrl(video);
 }
 
@@ -205,22 +207,38 @@ function submitIntervals() {
   invokeIntervals(20);
 }
 
-function invokeIntervals(k){
+function invokeIntervals(k, earlyStart = false){
   const video = mainVideo;
   const t = video.currentTime;
   if(!adState && video.readyState===4 && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
-      const t1 = intervals.length > 0 ? intervals[0][0] : 0;
-      video.currentTime = t1;
-      console.log('invoked.', t,  t1, video.duration);
+      if(earlyStart){
+        const n = intervals.length;
+        for(let i=0; i<n+1; i++){
+          const [start, end] = i<n ? intervals[i] : [video.duration - PRE_END_S, video.duration - PRE_END_S/2];
+          const prevEnd = i==0 ? 0 : intervals[i-1][1];
+          if(t >= prevEnd && t < start){
+            video.currentTime = start;
+            console.log('invoked. (earlyStart)', t,  start, video.duration);
+            break;
+          }else if(t < end){
+            console.log('invoked. (earlyStart)');
+            break;
+          }
+        }
+      }else{
+        const t1 = intervals.length > 0 ? intervals[0][0] : 0;
+        video.currentTime = t1;
+        console.log('invoked.', t,  t1, video.duration);
+      }
     }
     showAndFadeShiner();
   }else if(k>0){
-    setTimeout(invokeIntervals, 100, k-!adState);
+    setTimeout(invokeIntervals, 100, k-!adState, earlyStart);
     if(!adState) console.log('('+k+')');
   }else
-    console.log('gave up.');
+    console.log(`gave up. readyState: ${video.readyState}, videoLoadTime: ${videoLoadTime}, adState: ${adState}`);
 }
 
 function showAndFadeShiner() {
@@ -323,7 +341,7 @@ function handleNewUrl() {
       dotted = latestMss.includes('.');
       intervals = strToIntervals(latestMss).map(intl => features[fversion].prolongEnd(intl, dotted)); 
       inputElement.value = msfy(intervals).replaceAll('-',' - ').replaceAll('.0','').replaceAll(',', ', '); // UI consistency sake only
-      invokeIntervals(20);
+      invokeIntervals(20, true);
     }
   });
 }
