@@ -16,7 +16,6 @@ var shortcuts = undefined;
 
 const TESTING = false;
 const PRE_END_S = 0.3; // Allow normal playback for last PRE_END_S duration, to ensure a timeupdateHandler2() call
-const EPSILON_S = 0.1; // Allow normal playback for last EPSILON_S duration, to ensure good state (e.g. readyState=4)
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
 const tFromId = 'tFrom7354';
@@ -76,7 +75,7 @@ function timeupdateHandler2(){
         if (imin == n && document.getElementById(loopId).checked)
           imin = 0;
         internalSeek = true;
-        mainVideo.currentTime = imin == n ? mainVideo.duration - EPSILON_S : intervals[imin][0];
+        mainVideo.currentTime = imin == n ? mainVideo.duration : intervals[imin][0];
         break;
       }
     }
@@ -210,7 +209,7 @@ function submitIntervals() {
 function invokeIntervals(k, earlyStart = false){
   const video = mainVideo;
   const t = video.currentTime;
-  if(!adState && video.readyState===4 && (Date.now()-videoLoadTime>100)){
+  if(!adState && (video.readyState===4 || t===video.duration) && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
       if(earlyStart){
@@ -696,7 +695,7 @@ async function initContentScript() {
       }
     };
     const defaults = {
-      allowPrecision: false,
+      allowPrecision: true,
       loopDefault: false,
       shortcuts: defaultShortcuts
     };

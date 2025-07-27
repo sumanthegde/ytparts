@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Load initial values or defaults
   chrome.storage.sync.get({
-    allowPrecision: false,
+    allowPrecision: true,
     loopDefault: false,
     shortcuts: defaultShortcuts
   }, function(items) {
