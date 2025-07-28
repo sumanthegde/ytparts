@@ -16,6 +16,7 @@ var shortcuts = undefined;
 
 const TESTING = false;
 const PRE_END_S = 0.3; // Allow normal playback for last PRE_END_S duration, to ensure a timeupdateHandler2() call
+const YT_END_IMPRECISION_S = 0.0001; // Sometimes when video ends, duration - currentTime ≈ 1e-7
 const subFromDivId = 'subFromDiv7354';
 const subToDivId= 'subToDiv7354';
 const tFromId = 'tFrom7354';
@@ -58,14 +59,14 @@ function timeupdateHandler(){
 function timeupdateHandler2(){
   if(adState) return;
   let curTime = mainVideo.currentTime;
-  if(curTime + PRE_END_S > mainVideo.duration && document.getElementById(loopId).checked){
+  if(curTime + PRE_END_S*mainVideo.playbackRate > mainVideo.duration && document.getElementById(loopId).checked){
     imin = 0;
     mainVideo.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
     return;
   }
   let dt = curTime - updatedTime;
   let savedInternalSeek = internalSeek;
-  if(0<dt && dt<0.5){
+  if(0<dt && dt<0.5*mainVideo.playbackRate){
     let n = intervals.length;
     for(let i=imin; i<n; i++){
       const [open,close] = intervals[i];
@@ -209,13 +210,13 @@ function submitIntervals() {
 function invokeIntervals(k, earlyStart = false){
   const video = mainVideo;
   const t = video.currentTime;
-  if(!adState && (video.readyState===4 || t===video.duration) && (Date.now()-videoLoadTime>100)){
+  if(!adState && (video.readyState===4 || t+YT_END_IMPRECISION_S>video.duration) && (Date.now()-videoLoadTime>100)){
     imin = 0;
     if(intervals.length>0){
       if(earlyStart){
         const n = intervals.length;
         for(let i=0; i<n+1; i++){
-          const [start, end] = i<n ? intervals[i] : [video.duration - PRE_END_S, video.duration - PRE_END_S/2];
+          const [start, end] = i<n ? intervals[i] : [video.duration - PRE_END_S*video.playbackRate, video.duration - PRE_END_S*video.playbackRate/2];
           const prevEnd = i==0 ? 0 : intervals[i-1][1];
           if(t >= prevEnd && t < start){
             video.currentTime = start;
