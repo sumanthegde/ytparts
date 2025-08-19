@@ -1,6 +1,6 @@
 var locationHref = undefined;
 
-var fversion = 1;
+var fversion = 2;
 const features = [
   {
     maxtgap: 1, // Preventive stop before end
@@ -22,17 +22,45 @@ const features = [
     maxtgap: 0.5,
     truncSec: function(x){return Math.trunc(x*10)/10;},
     addPlayerListeners: function(video){
-      video.addEventListener("timeupdate", timeupdateHandler2);
+      // Remove timeupdate event listener
+      // video.addEventListener("timeupdate", timeupdateHandler2);
+
+      // Call timeupdateHandler2 every 100 ms, but stop if video is orphaned
+      if (!video._ytpartsInterval) {
+        video._ytpartsInterval = setInterval(() => {
+          // Check if video is still in the DOM
+          if (!document.body.contains(video)) {
+            clearInterval(video._ytpartsInterval);
+            video._ytpartsInterval = null;
+            return;
+          }
+          timeupdateHandler2();
+        }, 100);
+      }
     },
     toSeconds: parseTime2, // function(timeStr,i){return parseTime2(timeStr,i===1);}, 
     decimals: 1, 
     minGap: 0.2, // In view of 0.25s gap between timeupdate events
-//    truncDecimals: function(str) {return str;},
+    prolongEnd: function([l,r],dotted) {return [l,!dotted && Math.abs(r - Math.round(r)) < 0.001 ? r+0.9 : r];},
+    exampleText: 'e.g. 0 - 60, 2:0.0 - 2:0.9',
+    vectorCheck: function(x,y){return x<y;},
+    vectorSign: '<'
+  },
+  {
+    maxtgap: 0.5,
+    truncSec: function(x){return Math.trunc(x*10)/10;},
+    addPlayerListeners: function(video){
+      video.addEventListener("timeupdate", timeupdateHandler2);
+    },
+    toSeconds: parseTime2, // function(timeStr,i){return parseTime2(timeStr,i===1);}, 
+    decimals: 1, 
+    minGap: 0.2, 
     prolongEnd: function([l,r],dotted) {return [l,!dotted && Math.abs(r - Math.round(r)) < 0.001 ? r+0.9 : r];},
     exampleText: 'e.g. 0 - 60, 2:0.0 - 2:0.9',
     vectorCheck: function(x,y){return x<y;},
     vectorSign: '<'
   }
+
 ]
 
 function getUrl(){

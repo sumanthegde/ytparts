@@ -13,8 +13,10 @@ var updatedTime = 0;
 var internalSeek = false;
 var loopDefault = undefined;
 var shortcuts = undefined;
+var tu = [];
 
 const TESTING = false;
+const DEBUGGING = false;
 const PRE_END_S = 0.3; // Allow normal playback for last PRE_END_S duration, to ensure a timeupdateHandler2() call
 const YT_END_IMPRECISION_S = 0.0001; // Sometimes when video ends, duration - currentTime ≈ 1e-7
 const subFromDivId = 'subFromDiv7354';
@@ -59,6 +61,14 @@ function timeupdateHandler(){
 function timeupdateHandler2(){
   if(adState) return;
   let curTime = mainVideo.currentTime;
+  if(DEBUGGING){
+    tu.push(curTime);
+    if(tu.length>95){
+      console.log([...tu].map(v => v));
+      tu.length = 0;
+      console.log("--");
+    }
+  }
   if(curTime + PRE_END_S*mainVideo.playbackRate > mainVideo.duration && document.getElementById(loopId).checked){
     imin = 0;
     mainVideo.currentTime = intervals.length > 0 ? intervals[0][0] : 0;
@@ -67,6 +77,8 @@ function timeupdateHandler2(){
   let dt = curTime - updatedTime;
   let savedInternalSeek = internalSeek;
   if(0<dt && dt<0.5*mainVideo.playbackRate){
+    if(DEBUGGING) 
+      tu.push(-1);
     let n = intervals.length;
     for(let i=imin; i<n; i++){
       const [open,close] = intervals[i];
@@ -81,6 +93,8 @@ function timeupdateHandler2(){
       }
     }
   }else{
+    if(DEBUGGING)
+      tu.push(-2);
     if(internalSeek)
       internalSeek = false;
     else
@@ -238,7 +252,7 @@ function invokeIntervals(k, earlyStart = false){
     setTimeout(invokeIntervals, 100, k-!adState, earlyStart);
     if(!adState) console.log('('+k+')');
   }else
-    console.log(`gave up. readyState: ${video.readyState}, videoLoadTime: ${videoLoadTime}, adState: ${adState}`);
+    console.log(`gave up. readyState: ${video.readyState}, videoLoadTime: ${videoLoadTime}, adState: ${adState}, curTime: ${t}, duration: ${video.duration}`);
 }
 
 function showAndFadeShiner() {
@@ -560,7 +574,7 @@ function addStaticListeners(){
     */
   });
   configureButton('End', tToId, subToDivId, false, function () {
-    const textToCopy = formatTime(video.currentTime);
+    const textToCopy = formatTime(Math.max(0, video.currentTime - 0.1));
     const inputElement = document.getElementById(inputElementId);
     
     inputElement.value = writeEndTime(inputElement.value, textToCopy);
