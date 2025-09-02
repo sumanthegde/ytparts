@@ -1,28 +1,36 @@
 # YouTube Parts Looper & Bookmarker
-[Chrome](https://chrome.google.com/webstore/detail/youtube-parts-looper-book/ofgegdifcefmhkfninkfgcjkminmbfdj)/[Firefox](https://addons.mozilla.org/en-US/firefox/addon/youtube-parts-looper/) extension to play, loop & bookmark multiple portions of a YouTube video.
+[Chrome](https://chrome.google.com/webstore/detail/youtube-parts-looper-book/ofgegdifcefmhkfninkfgcjkminmbfdj) / [Firefox](https://addons.mozilla.org/en-US/firefox/addon/youtube-parts-looper/) extension to play, loop & bookmark multiple segments of a YouTube video.
 
-#### Sample Use Case
-Suppose a YouTube video is an album of 5 songs and you only want to listen to the 1st and the 3rd songs in it. Using this extension, you can specify the intervals (ranges) of those songs, and only those portions will be played.
+## Motivation
+Most existing extensions only looped a single continuous segment. We wanted to cycle through multiple disjoint segments, and to *remember* them across sessions. 
 
-### Features
-#### Specifying Multiple Intervals
-An input box appears just below the video. There, you should specify the intervals as a comma separated list. Example: "00:00-00:30, 5:00-5:30" (without quotes) specifies two intervals, namely, the first 30 seconds and then the 30 seconds after the 5-minute mark. On clicking 'Apply', these intervals are played one after another. 
-- Timestamps can be in the hh:mm:ss format (e.g. "00:00:00-1:00:00" means the first 1 hour), or the mm:ss format, or just in seconds ("0-3600" also means the first 1 hour).
-- A button showing the current timestamp is provided. Clicking it copies the timestamp to the clipboard. This is helpful in noting down and entering timestamps.
-- Intervals are ordered by their starting time. Overlapping intervals are merged.
+As a side effect, this also restores a feature YouTube [added](https://blog.youtube/news-and-events/cut-to-chase-with-improved-youtube/) in 2012 and [removed](https://stackoverflow.com/questions/41046667/playing-several-custom-youtube-video-urls-with-start-and-end-time-in-sequence-li#comment78182423_41046667) in 2014 — segment-aware playlists — by letting users save interval lists that reload automatically when revisiting a video.
 
+## How it works
+1. **Segment skipping** – the player is polled every 100 ms to check if the segment end was crossed, then it jumps to the next start.
+2. **Persistence via bookmarks** – the extension encodes segment info in the bookmark name:
+```
+<unix-timestamp>#<segment-list>#<user-given-name>
+```
+A **segment list** is a comma-separated list of `<start-time>-<end-time>` pairs, e.g. `00:10-00:30,01:05-01:15`
 
-#### Bookmarking
-You can also 'bookmark' the intervals that you have just applied (by clicking the 'Bookmark!' button). Next time you play the same video, those intervals are automatically loaded from bookmarks and only the corresponding portions are played. 
-- You can use this feature to essentially create a whole playlist of video segments (by first creating the playlist on YouTube, and then bookmarking the desired portions for individual videos in it).
+- All such bookmarks are stored in a dedicated folder `YouTubePartsBookmarks`.
+- On video load, the extension looks up this folder, parses the latest entry (i.e. segment list), and applies the stored segments.
+- The unix-timestamp enables multiple segment lists per video and helps identify the newest one.
 
-Clicking the button 'All B.s' opens up a side pane where all the previously bookmarked interval lists are shown. If there are multiple lists for the same video, then the most recently added interval-list will load automatically. Here, you can also manually delete a bookmark.
+## Implementation challenges
+1. **YouTube as an SPA** – detecting navigation events and reliably applying segment lists requires workarounds.
+2. **Late attribute updates** – video metadata (including URL) is sometimes updated after playback starts, causing a lag before segments can be enforced.
 
-#### Looping
-Finally, there's an option to play the sequence of portions on a loop.
+## Permissions & privacy
+- Requires **bookmarks access** — only within the `YouTubePartsBookmarks` folder.
+- No data leaves your browser: the extension does not collect or transmit bookmarks, usage, or analytics.
 
-### Disclosure
-- This extension requires a 'bookmark access' permission. 
-  - The 'bookmarking' feature works by creating entries in a dedicated bookmarks folder called 'YoutubePartsLooper' (created initially by the extension itself). Ensure not to delete or modify it.
-  - Nothing outside the said bookmak folder is ever accessed.
-- This extension does NOT collect or send over network any information, like the saved bookmarks or usage statistics.
+---
+
+If you’re curious about the code:
+- The core logic for skipping and restoring segments lives in `root/ytparts_content.js`.
+- Bookmark parsing and persistence logic is in `root/background.js`.
+- Bookmark list display is handled in `root/popup.js`.
+
+Contributions are welcome!
