@@ -22,6 +22,9 @@ A **segment list** is a comma-separated list of `<start-time>-<end-time>` pairs,
 1. **YouTube as an SPA** – detecting navigation events and reliably applying segment lists requires workarounds.
 2. **Late attribute updates** – video metadata (including URL) is sometimes updated after playback starts, causing a lag before segments can be enforced.
 
+## To-do list
+1. **Export & Import** - Export has been implemented, as we recently updated [here](https://medium.com/@sumantshs/youtube-playlists-with-custom-start-end-time-s-214f99126606). However, a smart import needs to be implemented from within the extension, which de-duplicates the bookmarks after the merge of bookmarks.
+
 ## Permissions & privacy
 - Requires **bookmarks access** — only within the `YouTubePartsBookmarks` folder.
 - No data leaves your browser: the extension does not collect or transmit bookmarks, usage, or analytics.
