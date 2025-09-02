@@ -1,4 +1,3 @@
-
 const dirName = 'YoutubePartsBookmarks';
 let folderId;
 
@@ -130,6 +129,29 @@ function getAllBookmarks(sendResponse) {
   }
 }
 
+function exportBookmarks(sendResponse) {
+  if (folderId) {
+    chrome.bookmarks.getSubTree(folderId, function(results) {
+      const bookmarks = results[0].children.filter(node => node.url);
+      let html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+        <META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+        <TITLE>Bookmarks created by the YouTube-Parts-Looper extension</TITLE>
+        <H2>Bookmarks created by the YouTube-Parts-Looper extension</H2>
+        <DL><p>
+        `;
+      bookmarks.forEach(b => {
+        // Use expand() if you want to get the original name, otherwise use b.title
+        html += `  <DT><A HREF="${b.url}" ADD_DATE="${Math.floor((b.dateAdded || Date.now())/1000)}">${b.title}</A>\n`;
+      });
+      html += `</DL><p>\n`;
+      sendResponse(html);
+    });
+  } else {
+    console.error("Error: Folder ID is not available.");
+    sendResponse("");
+  }
+}
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   if (request.type == 'save')
     saveBookmark(request, null);
@@ -137,6 +159,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     deleteBookmark(request.payload, sendResponse);
   else if (request.type == 'getall') {
     getAllBookmarks(sendResponse);
+  }
+  else if (request.type == 'export') {
+    exportBookmarks(sendResponse);
   }
   return true;
 });

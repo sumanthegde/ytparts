@@ -32,7 +32,13 @@ function createPopup(mainUrl, enableButton) {
   closeButton.textContent = "Close";
   closeButton.style.borderRadius= "3px";
   Object.assign(closeButton.style, styleConfig.anyButton);
+  const exportButton = document.createElement("button");
+  exportButton.id = "exportButton7354";
+  exportButton.textContent = "Export";
+  exportButton.style.borderRadius= "3px";
+  Object.assign(exportButton.style, styleConfig.anyButton);
   titleBar.appendChild(document.createTextNode("Previously Bookmarked Intervals"));
+  titleBar.appendChild(exportButton);
   titleBar.appendChild(closeButton);
   popupOverlay.appendChild(titleBar);
   document.body.appendChild(popupOverlay);
@@ -42,6 +48,25 @@ function createPopup(mainUrl, enableButton) {
     enableButton(historyButton);
     popupOverlay.remove();
   });
+  const eb = document.getElementById('exportButton7354');
+  eb.addEventListener("click", function () {
+    eb.disabled=true;
+    eb.style.backgroundColor = 'dimgrey';
+    eb.style.cursor = 'default'
+    chrome.runtime.sendMessage({ type: 'export' }, 
+      function(jsonString) {
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'exported-bookmarks-of-youtube-parts-looper.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    )}
+  );
   const mainVideoId = urlToVideoId(mainUrl);
   const outerList = document.createElement("ul");
   outerList.style.backgroundColor = 'White';

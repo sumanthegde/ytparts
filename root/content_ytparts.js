@@ -519,13 +519,13 @@ function configureButton(text, elementId, childId, disableOnClick, onClick) {
     }
     setTimeout(removeTooltip, TOOLTIP_MS);
   }
-  button.addEventListener('click', function () {
+  button.addEventListener('click', function (event) {
     if (!button.disabled) {
       if(disableOnClick){
         disableButton(button);
         button.style.backgroundColor = themeList[themeIndex][2]; // 'LightGrey'; 
       }
-      var tooltipMessage = onClick();
+      var tooltipMessage = onClick(event);
       if(tooltipMessage)
         showTooltip(tooltipMessage);
     }
@@ -573,8 +573,9 @@ function addStaticListeners(){
         });
     */
   });
-  configureButton('End', tToId, subToDivId, false, function () {
-    const textToCopy = formatTime(Math.max(0, video.currentTime - 0.1));
+  configureButton('End', tToId, subToDivId, false, function (event) {
+    const t = event && event.shiftKey ? video.duration : Math.max(0,  video.currentTime - 0.1);
+    const textToCopy = formatTime(t);
     const inputElement = document.getElementById(inputElementId);
     
     inputElement.value = writeEndTime(inputElement.value, textToCopy);
