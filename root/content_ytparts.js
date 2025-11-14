@@ -583,8 +583,8 @@ function addStaticListeners(){
     inputElement.dispatchEvent(new Event('focusout'));
     return textToCopy;
   });
-  addShortcutListeners();
   configureButton('Apply', submitButtonId, submitButtonId, false, () => 'Applied');
+  addShortcutListeners();
   configureButton('Un-apply', deleteButtonId, deleteButtonId, false, () => 'Un_applied');
   configureButton('Bookmark!', bookmarkId, bookmarkId, false, function (){
     const markName = prompt("To bookmark this interval list, enter a name.");
@@ -675,7 +675,7 @@ function matchesShortcut(event, shortcut) {
 }
 
 function addShortcutListeners(){
-  if (!shortcuts?.start || !shortcuts?.end) {
+  if (!shortcuts?.start || !shortcuts?.end || !shortcuts?.absoluteEnd || !shortcuts?.apply) {
     console.warn('Shortcuts not properly initialized:', shortcuts);
     return;
   }
@@ -687,6 +687,21 @@ function addShortcutListeners(){
     } else if (matchesShortcut(e, shortcuts.end)) {
       e.preventDefault();
       const tToBtn = document.getElementById(tToId);
+      tToBtn?.click();
+    } else if (matchesShortcut(e, shortcuts.absoluteEnd)) {
+      e.preventDefault();
+      const tToBtn = document.getElementById(tToId);
+      //tToBtn?.click();
+      tToBtn.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          shiftKey: true
+        })
+      );
+    } else if (matchesShortcut(e, shortcuts.apply)) {
+      e.preventDefault();
+      const tToBtn = document.getElementById(submitButtonId);
       tToBtn?.click();
     }
   });
@@ -708,7 +723,16 @@ async function initContentScript() {
       end: {
         key: '.',
         modifiers: ['shift', 'meta']
+      },
+      absoluteEnd: {
+        key: ';',
+        modifiers: ['meta', 'shift']
+      },
+      apply: {
+        key: '\'',
+        modifiers: ['meta', 'shift']      
       }
+      
     };
     const defaults = {
       allowPrecision: true,
