@@ -199,7 +199,7 @@ function submitIntervals() {
   const patternFail = 'Input format should be startTime-endTime,startTime-endTime,... etc.' + example;
   const timestampFail = 'Ensure startTime ' + features[fversion].vectorSign + ' endTime,' + 
   ' and that timestamps are in h:m:s or m:s or s format.' + example;
-  if (intervalsStr.length>300){
+  if (intervalsStr.length>4000){
     alert("Input too long.");
     return;
   }
@@ -283,7 +283,7 @@ function handleNewUrl() {
   if(!initDone) // To handle concurrent initButtonsAndHandleNewUrl() calls
     return; 
   const video = mainVideo;
-  if(video.baseURI === pageUrl)
+  if(window.location.href === pageUrl)
     return;
   pageUrl = undefined; // video.baseURI may be null yet
 
@@ -341,7 +341,7 @@ function handleNewUrl() {
   
   deleteButton.addEventListener('click', handleDelete);
 
-  pageUrl = video.baseURI;
+  pageUrl = window.location.href;
   console.log("https://youtu.be/" + urlToVideoId(pageUrl));
   const curVideoId = urlToVideoId(pageUrl);
   chrome.runtime.sendMessage({ type: 'getall' }, function (response) {
@@ -396,7 +396,8 @@ function knowTheme() {
 function createIntervalInput() {
   firstLoad = false;
   const belowDiv = document.getElementById('below');
-  if (belowDiv) {
+  const musicBar = !belowDiv ? document.querySelector('ytmusic-player') : null;
+  if (belowDiv || musicBar) {
     const fromDiv = document.createElement("div");
     fromDiv.style.display = 'inline';
     const tFrom = document.createElement("button");
@@ -469,16 +470,29 @@ function createIntervalInput() {
     loopCheckbox.style.position = 'relative';
     loopCheckbox.checked = loopDefault;
 
-    belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
-    belowDiv.parentNode.insertBefore(toDiv, belowDiv);
-    belowDiv.parentNode.insertBefore(inputElement, belowDiv);
-    belowDiv.parentNode.insertBefore(submitButton, belowDiv);
-    belowDiv.parentNode.insertBefore(shineDiv, belowDiv);
-    belowDiv.parentNode.insertBefore(deleteButton, belowDiv);
-    belowDiv.parentNode.insertBefore(markButton, belowDiv);
-    belowDiv.parentNode.insertBefore(historyButton, belowDiv);
-    belowDiv.parentNode.insertBefore(loopLabel, belowDiv);
-    belowDiv.parentNode.insertBefore(loopCheckbox, belowDiv);
+    if (belowDiv) {
+      // www.youtube.com: insert individual elements before #below
+      belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
+      belowDiv.parentNode.insertBefore(toDiv, belowDiv);
+      belowDiv.parentNode.insertBefore(inputElement, belowDiv);
+      belowDiv.parentNode.insertBefore(submitButton, belowDiv);
+      belowDiv.parentNode.insertBefore(shineDiv, belowDiv);
+      belowDiv.parentNode.insertBefore(deleteButton, belowDiv);
+      belowDiv.parentNode.insertBefore(markButton, belowDiv);
+      belowDiv.parentNode.insertBefore(historyButton, belowDiv);
+      belowDiv.parentNode.insertBefore(loopLabel, belowDiv);
+      belowDiv.parentNode.insertBefore(loopCheckbox, belowDiv);
+    } else {
+      // music.youtube.com: wrap in a flex container, insert just above the player bar
+      const ytpartsBar = document.createElement('div');
+      ytpartsBar.id = 'ytpartsBar7354';
+      ytpartsBar.style.display = 'flex';
+      ytpartsBar.style.flexWrap = 'wrap';
+      ytpartsBar.style.alignItems = 'center';
+      [fromDiv, toDiv, inputElement, submitButton, shineDiv, deleteButton, markButton, historyButton, loopLabel, loopCheckbox]
+        .forEach(el => ytpartsBar.appendChild(el));
+      musicBar.insertAdjacentElement('beforebegin', ytpartsBar);
+    }
 
     addStaticListeners();
     adBasedButtonUpdate();
