@@ -471,6 +471,7 @@ function createIntervalInput() {
     loopCheckbox.checked = loopDefault;
 
     if (belowDiv) {
+      console.log('Inserting buttons before #below');
       // www.youtube.com: insert individual elements before #below
       belowDiv.parentNode.insertBefore(fromDiv, belowDiv);
       belowDiv.parentNode.insertBefore(toDiv, belowDiv);
@@ -483,15 +484,28 @@ function createIntervalInput() {
       belowDiv.parentNode.insertBefore(loopLabel, belowDiv);
       belowDiv.parentNode.insertBefore(loopCheckbox, belowDiv);
     } else {
-      // music.youtube.com: wrap in a flex container, insert just above the player bar
+      console.log('Inserting buttons (music) as overlay');
+      // music.youtube.com: position absolutely at the bottom of #main-panel
+      // so it overlays without shrinking ytmusic-player (which would hide the video)
       const ytpartsBar = document.createElement('div');
       ytpartsBar.id = 'ytpartsBar7354';
       ytpartsBar.style.display = 'flex';
       ytpartsBar.style.flexWrap = 'wrap';
       ytpartsBar.style.alignItems = 'center';
+      ytpartsBar.style.position = 'absolute';
+      ytpartsBar.style.bottom = '0';
+      ytpartsBar.style.left = '0';
+      ytpartsBar.style.right = '0';
+      ytpartsBar.style.zIndex = '9999';
+      ytpartsBar.style.background = 'rgba(0,0,0,0.6)';
       [fromDiv, toDiv, inputElement, submitButton, shineDiv, deleteButton, markButton, historyButton, loopLabel, loopCheckbox]
         .forEach(el => ytpartsBar.appendChild(el));
-      musicBar.insertAdjacentElement('beforebegin', ytpartsBar);
+      // Anchor to #main-panel (parent of ytmusic-player) so absolute bottom=0 lands below the player
+      const mainPanel = musicBar.closest('#main-panel') || musicBar.parentNode;
+      if (mainPanel.style.position !== 'relative' && mainPanel.style.position !== 'absolute') {
+        mainPanel.style.position = 'relative';
+      }
+      mainPanel.appendChild(ytpartsBar);
     }
 
     addStaticListeners();
