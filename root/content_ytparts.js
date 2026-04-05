@@ -493,10 +493,10 @@ function createIntervalInput() {
       ytpartsBar.style.flexWrap = 'wrap';
       ytpartsBar.style.alignItems = 'center';
       ytpartsBar.style.position = 'absolute';
-      ytpartsBar.style.bottom = '0';
+      ytpartsBar.style.bottom = '15px';
       ytpartsBar.style.left = '0';
       ytpartsBar.style.right = '0';
-      ytpartsBar.style.zIndex = '9999';
+      //ytpartsBar.style.zIndex = '9999';
       ytpartsBar.style.background = 'rgba(0,0,0,0.6)';
       [fromDiv, toDiv, inputElement, submitButton, shineDiv, deleteButton, markButton, historyButton, loopLabel, loopCheckbox]
         .forEach(el => ytpartsBar.appendChild(el));
